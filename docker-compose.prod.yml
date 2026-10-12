@@ -1,0 +1,96 @@
+# Production stack for a single server (e.g. a Hostinger VPS).
+#   node scripts/setup-env.mjs --production notes.example.com
+#   docker compose -f docker-compose.prod.yml up -d --build
+# Only Caddy is exposed (80/443, automatic HTTPS). PostgreSQL and Redis are internal only.
+name: notetaker
+
+x-app: &app
+  build: { context: ., dockerfile: infra/docker/server.Dockerfile }
+  env_file: .env
+  environment:
+    DATABASE_URL: postgres://notetaker_api:${APP_DB_PASSWORD:?set in .env}@postgres:5432/notetaker
+    DATABASE_MIGRATION_URL: postgres://notetaker_owner:${POSTGRES_PASSWORD:?set in .env}@postgres:5432/notetaker
+    REDIS_URL: redis://:${REDIS_PASSWORD:?set in .env}@redis:6379
+    STORAGE_LOCAL_DIR: /data/storage
+    TRUST_PROXY: "2" # Caddy -> nginx -> api
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: notetaker
+      POSTGRES_USER: notetaker_owner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set in .env}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?set in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init-prod.sh:/docker-entrypoint-initdb.d/10-roles.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notetaker_owner -d notetaker"]
+      interval: 5s
+      retries: 30
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command:
+      ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:?set in .env}"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD-SHELL", 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping']
+      interval: 5s
+      retries: 30
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set in .env}
+    restart: unless-stopped
+
+  migrate:
+    <<: *app
+    command: ["node", "dist/migrate.js"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+
+  api:
+    <<: *app
+    command: ["node", "dist/main-api.js"]
+    volumes: [storage:/data/storage]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  worker:
+    <<: *app
+    command: ["node", "dist/main-worker.js"]
+    volumes: [storage:/data/storage]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  web:
+    build: { context: ., dockerfile: infra/docker/web.Dockerfile }
+    environment:
+      API_UPSTREAM: api:4000
+    depends_on: [api]
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      DOMAIN: ${DOMAIN:?set in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?set in .env}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./infra/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on: [web]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  storage:
+  caddydata:
+  caddyconfig:

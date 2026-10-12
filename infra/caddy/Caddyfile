@@ -1,0 +1,11 @@
+{
+	# Let's Encrypt account email (optional but recommended).
+	email {$ACME_EMAIL}
+}
+
+# Caddy obtains and renews the HTTPS certificate for DOMAIN automatically.
+# The DNS A record for DOMAIN must point at this server before first start.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy web:8080
+}

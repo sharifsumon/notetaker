@@ -33,6 +33,12 @@ use **Copy minutes**.
 Compose runs `migrate` once, then `api`, `worker` and `web` (nginx). Swagger UI:
 <http://localhost:4000/api/docs>.
 
+## Deploying
+
+- Single server (e.g. a **Hostinger VPS**) with automatic HTTPS: [`docs/DEPLOY_HOSTINGER.md`](docs/DEPLOY_HOSTINGER.md)
+  using `docker-compose.prod.yml` and `node scripts/setup-env.mjs --production <domain> <email>`.
+- Managed / multi-server deployments: [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
 ## Local development without Docker
 
 Prerequisites: Node.js 22, pnpm 10 (`corepack enable`), PostgreSQL 16, Redis 7, ffmpeg/ffprobe.
