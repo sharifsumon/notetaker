@@ -15,7 +15,7 @@ import {
   type RecordingStatus,
   type TranscriptStatus,
 } from "@notetaker/shared";
-import { and, asc, desc, eq, getTableColumns, gte, ilike, isNull, lt, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, getTableColumns, gte, ilike, isNull, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
 import type { AuditService } from "../audit/audit.service";
 import type { Db, Tx } from "../db/client";
 import { meetingParticipants, meetings, meetingStatusEvents, users, type Meeting } from "../db/schema";
@@ -181,6 +181,8 @@ export class MeetingService {
       if (q.status) conds.push(eq(meetings.status, q.status));
       if (q.q) conds.push(ilike(meetings.title, `%${escapeLike(q.q)}%`));
       if (q.view === "upcoming") {
+        // Not yet ended, and not already finished/being processed (those belong under "past").
+        conds.push(notInArray(meetings.status, ["completed", "failed", "recording_processing", "deletion_pending"]));
         conds.push(
           or(
             gte(meetings.scheduledEndAt, now),
