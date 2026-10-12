@@ -4,8 +4,12 @@ import { GoogleCalendarApi, normalizeGoogleEvent } from "./google";
 import { MicrosoftCalendarApi, normalizeGraphEvent } from "./microsoft";
 import { CursorExpiredError } from "./types";
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
-const win = { windowStart: new Date("2026-10-01T00:00:00Z"), windowEnd: new Date("2026-11-01T00:00:00Z") };
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+const win = {
+  windowStart: new Date("2026-10-01T00:00:00Z"),
+  windowEnd: new Date("2026-11-01T00:00:00Z"),
+};
 
 describe("Google Calendar adapter", () => {
   it("normalizes events and detects Meet links from conferenceData", () => {
@@ -15,8 +19,13 @@ describe("Google Calendar adapter", () => {
       summary: "Planning",
       start: { dateTime: "2026-10-12T09:00:00+06:00" },
       end: { dateTime: "2026-10-12T10:00:00+06:00" },
-      conferenceData: { entryPoints: [{ entryPointType: "video", uri: "https://meet.google.com/abc-defg-hij" }] },
-      attendees: [{ email: "a@x.com", displayName: "A", organizer: true }, { email: "room@x.com", resource: true }],
+      conferenceData: {
+        entryPoints: [{ entryPointType: "video", uri: "https://meet.google.com/abc-defg-hij" }],
+      },
+      attendees: [
+        { email: "a@x.com", displayName: "A", organizer: true },
+        { email: "room@x.com", resource: true },
+      ],
     });
     expect(e.meeting?.platform).toBe("google_meet");
     expect(e.start?.toISOString()).toBe("2026-10-12T03:00:00.000Z");
@@ -27,7 +36,10 @@ describe("Google Calendar adapter", () => {
 
   it("follows pagination and returns the sync token; uses syncToken incrementally", async () => {
     const urls: string[] = [];
-    const responses = [json({ items: [{ id: "1" }], nextPageToken: "p2" }), json({ items: [{ id: "2" }], nextSyncToken: "sync-1" })];
+    const responses = [
+      json({ items: [{ id: "1" }], nextPageToken: "p2" }),
+      json({ items: [{ id: "2" }], nextSyncToken: "sync-1" }),
+    ];
     const api = new GoogleCalendarApi((async (u: string) => {
       urls.push(u);
       return responses.shift()!;
@@ -48,11 +60,20 @@ describe("Google Calendar adapter", () => {
   });
 
   it("maps 410 to cursor expiry, 401 to reauth, and rate limits to retryable errors", async () => {
-    const api = (status: number, body: unknown = {}) => new GoogleCalendarApi((async () => json(body, status)) as typeof fetch);
-    await expect(api(410).listChanges({ accessToken: "t", cursor: "x", ...win })).rejects.toBeInstanceOf(CursorExpiredError);
-    await expect(api(401).listChanges({ accessToken: "t", cursor: null, ...win })).rejects.toBeInstanceOf(ReauthRequiredError);
+    const api = (status: number, body: unknown = {}) =>
+      new GoogleCalendarApi((async () => json(body, status)) as typeof fetch);
     await expect(
-      api(403, { error: { errors: [{ reason: "rateLimitExceeded" }] } }).listChanges({ accessToken: "t", cursor: null, ...win }),
+      api(410).listChanges({ accessToken: "t", cursor: "x", ...win }),
+    ).rejects.toBeInstanceOf(CursorExpiredError);
+    await expect(
+      api(401).listChanges({ accessToken: "t", cursor: null, ...win }),
+    ).rejects.toBeInstanceOf(ReauthRequiredError);
+    await expect(
+      api(403, { error: { errors: [{ reason: "rateLimitExceeded" }] } }).listChanges({
+        accessToken: "t",
+        cursor: null,
+        ...win,
+      }),
     ).rejects.toMatchObject({ retryable: true });
   });
 });
@@ -66,21 +87,31 @@ describe("Microsoft Graph adapter", () => {
       start: { dateTime: "2026-10-12T09:00:00.0000000", timeZone: "UTC" },
       end: { dateTime: "2026-10-12T09:30:00.0000000", timeZone: "UTC" },
       isOnlineMeeting: true,
-      onlineMeeting: { joinUrl: "https://teams.microsoft.com/l/meetup-join/19%3ameeting_x%40thread.v2/0" },
+      onlineMeeting: {
+        joinUrl: "https://teams.microsoft.com/l/meetup-join/19%3ameeting_x%40thread.v2/0",
+      },
       organizer: { emailAddress: { name: "Org", address: "org@x.com" } },
       attendees: [{ type: "required", emailAddress: { name: "Org", address: "org@x.com" } }],
     } as never);
     expect(e.meeting?.platform).toBe("microsoft_teams");
     expect(e.start?.toISOString()).toBe("2026-10-12T09:00:00.000Z");
     expect(e.attendees).toHaveLength(1); // de-duplicated
-    expect(normalizeGraphEvent({ id: "gone", "@removed": { reason: "deleted" } } as never).cancelled).toBe(true);
+    expect(
+      normalizeGraphEvent({ id: "gone", "@removed": { reason: "deleted" } } as never).cancelled,
+    ).toBe(true);
   });
 
   it("follows nextLink to the deltaLink and never sends the token to other hosts", async () => {
     const seen: string[] = [];
     const responses = [
-      json({ value: [{ id: "1" }], "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/calendarView/delta?$skiptoken=2" }),
-      json({ value: [{ id: "2" }], "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/calendarView/delta?$deltatoken=d" }),
+      json({
+        value: [{ id: "1" }],
+        "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/calendarView/delta?$skiptoken=2",
+      }),
+      json({
+        value: [{ id: "2" }],
+        "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/calendarView/delta?$deltatoken=d",
+      }),
     ];
     const api = new MicrosoftCalendarApi((async (u: string) => {
       seen.push(u);
@@ -92,11 +123,14 @@ describe("Microsoft Graph adapter", () => {
 
     const evil = new MicrosoftCalendarApi((async () =>
       json({ value: [], "@odata.nextLink": "https://evil.example/steal" })) as typeof fetch);
-    await expect(evil.listChanges({ accessToken: "t", cursor: null, ...win })).rejects.toThrow(/Unexpected Graph link host/);
+    await expect(evil.listChanges({ accessToken: "t", cursor: null, ...win })).rejects.toThrow(
+      /Unexpected Graph link host/,
+    );
   });
 
   it("maps 410/SyncStateNotFound to cursor expiry", async () => {
-    const api = new MicrosoftCalendarApi((async () => json({ error: { code: "SyncStateNotFound" } }, 400)) as typeof fetch);
+    const api = new MicrosoftCalendarApi((async () =>
+      json({ error: { code: "SyncStateNotFound" } }, 400)) as typeof fetch);
     await expect(
       api.listChanges({ accessToken: "t", cursor: "https://graph.microsoft.com/v1.0/x", ...win }),
     ).rejects.toBeInstanceOf(CursorExpiredError);

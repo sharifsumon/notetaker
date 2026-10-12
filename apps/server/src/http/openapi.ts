@@ -25,7 +25,12 @@ export function buildOpenApi(version: string): Record<string, unknown> {
       if (!schema) continue;
       const js = schemaOf(schema) as { properties?: Record<string, unknown>; required?: string[] };
       for (const [name, prop] of Object.entries(js.properties ?? {})) {
-        parameters.push({ name, in: where, required: where === "path" || (js.required ?? []).includes(name), schema: prop });
+        parameters.push({
+          name,
+          in: where,
+          required: where === "path" || (js.required ?? []).includes(name),
+          schema: prop,
+        });
       }
     }
     const responses: Record<string, unknown> = {};
@@ -39,14 +44,26 @@ export function buildOpenApi(version: string): Record<string, unknown> {
             : {}),
       };
     }
-    responses.default = { description: "Error", content: { "application/json": { schema: schemaOf(ErrorEnvelopeSchema) } } };
+    responses.default = {
+      description: "Error",
+      content: { "application/json": { schema: schemaOf(ErrorEnvelopeSchema) } },
+    };
     paths[oasPath] ??= {};
     paths[oasPath][r.method] = {
       summary: r.summary,
       tags: [r.tag],
-      ...(r.auth === "user" || r.auth === "admin" ? { security: [{ sessionCookie: [], csrfHeader: [] }] } : {}),
+      ...(r.auth === "user" || r.auth === "admin"
+        ? { security: [{ sessionCookie: [], csrfHeader: [] }] }
+        : {}),
       ...(parameters.length ? { parameters } : {}),
-      ...(r.body ? { requestBody: { required: true, content: { "application/json": { schema: schemaOf(r.body) } } } } : {}),
+      ...(r.body
+        ? {
+            requestBody: {
+              required: true,
+              content: { "application/json": { schema: schemaOf(r.body) } },
+            },
+          }
+        : {}),
       responses,
     };
   }

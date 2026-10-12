@@ -36,7 +36,11 @@ export class OAuthStateCodec {
       userId,
       exp: Date.now() + TTL_MS,
     };
-    return { st, cookie: this.cipher.encrypt(JSON.stringify(st), "oauth"), challenge: pkceChallenge(st.verifier) };
+    return {
+      st,
+      cookie: this.cipher.encrypt(JSON.stringify(st), "oauth"),
+      challenge: pkceChallenge(st.verifier),
+    };
   }
 
   read(cookie: string | undefined): OAuthState | null {

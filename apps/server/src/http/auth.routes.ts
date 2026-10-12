@@ -9,7 +9,13 @@ import { authIdentities, users } from "../db/schema";
 import { serialize } from "cookie";
 import { Errors, ProviderError } from "../lib/errors";
 import { route } from "../lib/http";
-import { allowedOrigins, clearCookie, requireUser, SESSION_COOKIE, sessionCookie } from "./middleware";
+import {
+  allowedOrigins,
+  clearCookie,
+  requireUser,
+  SESSION_COOKIE,
+  sessionCookie,
+} from "./middleware";
 
 const ProviderParam = z.object({ provider: z.enum(["google", "microsoft"]) });
 
@@ -83,7 +89,13 @@ export function authRoutes(c: Container, authLimiter: RequestHandler): Router {
       tag: "Auth",
       auth: "public",
       params: ProviderParam,
-      query: z.object({ code: z.string().max(4096).optional(), state: z.string().max(512).optional(), error: z.string().max(200).optional() }).loose(),
+      query: z
+        .object({
+          code: z.string().max(4096).optional(),
+          state: z.string().max(512).optional(),
+          error: z.string().max(200).optional(),
+        })
+        .loose(),
       middleware: [authLimiter],
     },
     async (req, res, { params, query }) => {
@@ -93,7 +105,14 @@ export function authRoutes(c: Container, authLimiter: RequestHandler): Router {
       };
       const st = c.oauthState.read(req.cookies[OAUTH_COOKIE]);
       if (query.error) return fail("access_denied");
-      if (!st || st.purpose !== "login" || st.provider !== params.provider || !query.state || st.state !== query.state || !query.code) {
+      if (
+        !st ||
+        st.purpose !== "login" ||
+        st.provider !== params.provider ||
+        !query.state ||
+        st.state !== query.state ||
+        !query.code
+      ) {
         return fail("invalid_state");
       }
       const client = c.oauth[params.provider as IdentityProvider];
@@ -113,7 +132,10 @@ export function authRoutes(c: Container, authLimiter: RequestHandler): Router {
           correlationId: req.requestId,
         });
         const s = await c.sessions.create(user.id, req.header("user-agent"));
-        res.setHeader("Set-Cookie", [clearCookie(c, OAUTH_COOKIE, "/api/v1"), sessionCookie(c, s.token, s.expiresAt)]);
+        res.setHeader("Set-Cookie", [
+          clearCookie(c, OAUTH_COOKIE, "/api/v1"),
+          sessionCookie(c, s.token, s.expiresAt),
+        ]);
         res.redirect(302, `${base}/${user.recordingNoticeAcknowledgedAt ? "" : "onboarding"}`);
       } catch (err) {
         req.log.warn({ code: err instanceof ProviderError ? err.code : "error" }, "sign-in failed");
@@ -130,7 +152,9 @@ export function authRoutes(c: Container, authLimiter: RequestHandler): Router {
       summary: "DEVELOPMENT ONLY: sign in as a local test user (disabled in production)",
       tag: "Auth",
       auth: "public",
-      body: z.object({ email: z.email().max(200), displayName: z.string().trim().min(1).max(120) }).strict(),
+      body: z
+        .object({ email: z.email().max(200), displayName: z.string().trim().min(1).max(120) })
+        .strict(),
       middleware: [authLimiter],
     },
     async (req, res, { body }) => {
@@ -140,7 +164,13 @@ export function authRoutes(c: Container, authLimiter: RequestHandler): Router {
       const email = body.email.toLowerCase();
       const user = await c.auth.resolveUser(
         "dev",
-        { subject: `dev:${email}`, tenant: null, email, emailVerified: false, name: body.displayName },
+        {
+          subject: `dev:${email}`,
+          tenant: null,
+          email,
+          emailVerified: false,
+          name: body.displayName,
+        },
         { correlationId: req.requestId },
       );
       const s = await c.sessions.create(user.id, req.header("user-agent"));
@@ -151,11 +181,25 @@ export function authRoutes(c: Container, authLimiter: RequestHandler): Router {
 
   route(
     r,
-    { method: "post", path: "/auth/logout", summary: "Sign out (revokes this session)", tag: "Auth", auth: "user", middleware: [requireUser] },
+    {
+      method: "post",
+      path: "/auth/logout",
+      summary: "Sign out (revokes this session)",
+      tag: "Auth",
+      auth: "user",
+      middleware: [requireUser],
+    },
     async (req, res) => {
       if (req.sessionId) await c.sessions.revoke(req.sessionId);
       await c.db.asSystem((tx) =>
-        c.audit.record(tx, { actorType: "user", actorId: req.user!.id, action: "auth.sign_out", targetType: "user", targetId: req.user!.id, correlationId: req.requestId }),
+        c.audit.record(tx, {
+          actorType: "user",
+          actorId: req.user!.id,
+          action: "auth.sign_out",
+          targetType: "user",
+          targetId: req.user!.id,
+          correlationId: req.requestId,
+        }),
       );
       res.setHeader("Set-Cookie", clearCookie(c, SESSION_COOKIE));
       res.status(204).end();
@@ -164,11 +208,25 @@ export function authRoutes(c: Container, authLimiter: RequestHandler): Router {
 
   route(
     r,
-    { method: "post", path: "/auth/logout-all", summary: "Sign out of all sessions", tag: "Auth", auth: "user", middleware: [requireUser] },
+    {
+      method: "post",
+      path: "/auth/logout-all",
+      summary: "Sign out of all sessions",
+      tag: "Auth",
+      auth: "user",
+      middleware: [requireUser],
+    },
     async (req, res) => {
       await c.sessions.revokeAllForUser(req.user!.id);
       await c.db.asSystem((tx) =>
-        c.audit.record(tx, { actorType: "user", actorId: req.user!.id, action: "auth.sign_out_all", targetType: "user", targetId: req.user!.id, correlationId: req.requestId }),
+        c.audit.record(tx, {
+          actorType: "user",
+          actorId: req.user!.id,
+          action: "auth.sign_out_all",
+          targetType: "user",
+          targetId: req.user!.id,
+          correlationId: req.requestId,
+        }),
       );
       res.setHeader("Set-Cookie", clearCookie(c, SESSION_COOKIE));
       res.status(204).end();
@@ -236,8 +294,15 @@ export function authRoutes(c: Container, authLimiter: RequestHandler): Router {
       const userId = req.user!.id;
       await c.db.asSystem(async (tx) => {
         const [u] = await tx.select().from(users).where(eq(users.id, userId));
-        if (body.autoRegister === true && !u?.recordingNoticeAcknowledgedAt && !body.acknowledgeRecordingNotice) {
-          throw Errors.conflict("recording_notice_required", "Acknowledge the recording notice before enabling automatic recording");
+        if (
+          body.autoRegister === true &&
+          !u?.recordingNoticeAcknowledgedAt &&
+          !body.acknowledgeRecordingNotice
+        ) {
+          throw Errors.conflict(
+            "recording_notice_required",
+            "Acknowledge the recording notice before enabling automatic recording",
+          );
         }
         await tx
           .update(users)
@@ -245,7 +310,9 @@ export function authRoutes(c: Container, authLimiter: RequestHandler): Router {
             ...(body.timezone ? { timezone: body.timezone } : {}),
             ...(body.displayName ? { displayName: body.displayName } : {}),
             ...(body.autoRegister !== undefined ? { autoRegister: body.autoRegister } : {}),
-            ...(body.acknowledgeRecordingNotice ? { recordingNoticeAcknowledgedAt: new Date() } : {}),
+            ...(body.acknowledgeRecordingNotice
+              ? { recordingNoticeAcknowledgedAt: new Date() }
+              : {}),
             updatedAt: new Date(),
           })
           .where(eq(users.id, userId));

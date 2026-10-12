@@ -36,9 +36,20 @@ export function requestContext(logger: Logger, metrics: Container["metrics"]): R
     res.on("finish", () => {
       const ms = Number(process.hrtime.bigint() - start) / 1e6;
       const routePath = (req.route as { path?: string } | undefined)?.path ?? "unmatched";
-      metrics.httpDuration.observe({ method: req.method, route: `${req.baseUrl}${routePath}`, status: res.statusCode }, ms / 1000);
+      metrics.httpDuration.observe(
+        { method: req.method, route: `${req.baseUrl}${routePath}`, status: res.statusCode },
+        ms / 1000,
+      );
       // Log path without query string (queries may contain search terms).
-      req.log.info({ method: req.method, path: req.baseUrl + (req.route ? routePath : ""), status: res.statusCode, ms: Math.round(ms) }, "request");
+      req.log.info(
+        {
+          method: req.method,
+          path: req.baseUrl + (req.route ? routePath : ""),
+          status: res.statusCode,
+          ms: Math.round(ms),
+        },
+        "request",
+      );
     });
     next();
   };
@@ -66,7 +77,11 @@ export function sessionLoader(c: Container): RequestHandler {
 
 export function allowedOrigins(c: Container): Set<string> {
   const set = new Set([new URL(c.env.PUBLIC_URL).origin]);
-  for (const o of (c.env.ALLOWED_ORIGINS ?? "").split(",").map((s) => s.trim()).filter(Boolean)) set.add(o);
+  for (const o of (c.env.ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean))
+    set.add(o);
   return set;
 }
 
@@ -110,7 +125,13 @@ export function sessionCookie(c: Container, value: string, expires: Date): strin
 }
 
 export function clearCookie(c: Container, name: string, path = "/"): string {
-  return serialize(name, "", { httpOnly: true, secure: c.env.COOKIE_SECURE, sameSite: "lax", path, maxAge: 0 });
+  return serialize(name, "", {
+    httpOnly: true,
+    secure: c.env.COOKIE_SECURE,
+    sameSite: "lax",
+    path,
+    maxAge: 0,
+  });
 }
 
 export function limiter(
@@ -123,7 +144,8 @@ export function limiter(
     standardHeaders: "draft-7",
     legacyHeaders: false,
     store: store?.(),
-    keyGenerator: (req) => `${opts.name}:${opts.keyBy === "user" && req.user ? req.user.id : (req.ip ?? "unknown")}`,
+    keyGenerator: (req) =>
+      `${opts.name}:${opts.keyBy === "user" && req.user ? req.user.id : (req.ip ?? "unknown")}`,
     handler: (_req, _res, next) => next(Errors.rateLimited()),
     validate: { keyGeneratorIpFallback: false },
   });
@@ -138,18 +160,37 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
   let appErr: AppError;
   if (err instanceof AppError) appErr = err;
   else if (err instanceof InvalidTransitionError) {
-    appErr = new AppError(409, "invalid_state", "This action is not allowed in the meeting's current state");
+    appErr = new AppError(
+      409,
+      "invalid_state",
+      "This action is not allowed in the meeting's current state",
+    );
   } else if ((err as { type?: string }).type === "entity.too.large") {
     appErr = new AppError(413, "payload_too_large", "Request body too large");
   } else if ((err as { type?: string }).type === "entity.parse.failed") {
     appErr = Errors.badRequest("Malformed JSON body");
   } else {
-    req.log?.error({ err: { name: (err as Error)?.name, message: (err as Error)?.message, stack: (err as Error)?.stack } }, "unhandled error");
+    req.log?.error(
+      {
+        err: {
+          name: (err as Error)?.name,
+          message: (err as Error)?.message,
+          stack: (err as Error)?.stack,
+        },
+      },
+      "unhandled error",
+    );
     appErr = new AppError(500, "internal_error", "An unexpected error occurred");
   }
-  if (appErr.status >= 500 && appErr.code !== "internal_error") req.log?.warn({ code: appErr.code }, "server error");
+  if (appErr.status >= 500 && appErr.code !== "internal_error")
+    req.log?.warn({ code: appErr.code }, "server error");
   if (res.headersSent) return;
   res.status(appErr.status).json({
-    error: { code: appErr.code, message: appErr.message, requestId: req.requestId, ...(appErr.details ? { details: appErr.details } : {}) },
+    error: {
+      code: appErr.code,
+      message: appErr.message,
+      requestId: req.requestId,
+      ...(appErr.details ? { details: appErr.details } : {}),
+    },
   });
 }

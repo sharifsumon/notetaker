@@ -15,10 +15,30 @@ import {
   type RecordingStatus,
   type TranscriptStatus,
 } from "@notetaker/shared";
-import { and, asc, desc, eq, getTableColumns, gte, ilike, isNull, lt, notInArray, or, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  getTableColumns,
+  gte,
+  ilike,
+  isNull,
+  lt,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 import type { AuditService } from "../audit/audit.service";
 import type { Db, Tx } from "../db/client";
-import { meetingParticipants, meetings, meetingStatusEvents, users, type Meeting } from "../db/schema";
+import {
+  meetingParticipants,
+  meetings,
+  meetingStatusEvents,
+  users,
+  type Meeting,
+} from "../db/schema";
 import { hmacSha256Hex, type TokenCipher } from "../lib/crypto";
 import { Errors } from "../lib/errors";
 import type { JobService } from "../jobs/job.service";
@@ -66,7 +86,9 @@ export class MeetingService {
   }
 
   decryptUrl(m: Pick<Meeting, "userId" | "encryptedMeetingUrl">): string | null {
-    return m.encryptedMeetingUrl ? this.d.cipher.decrypt(m.encryptedMeetingUrl, `meeting-url:${m.userId}`) : null;
+    return m.encryptedMeetingUrl
+      ? this.d.cipher.decrypt(m.encryptedMeetingUrl, `meeting-url:${m.userId}`)
+      : null;
   }
 
   urlHash(normalizedUrl: string): string {
@@ -77,7 +99,12 @@ export class MeetingService {
    * The single place meeting status changes. Rejects invalid transitions (FR-07) and
    * persists status history in the same transaction.
    */
-  async transition(tx: Tx, meeting: Meeting, to: MeetingStatus, opts: TransitionOpts): Promise<Meeting> {
+  async transition(
+    tx: Tx,
+    meeting: Meeting,
+    to: MeetingStatus,
+    opts: TransitionOpts,
+  ): Promise<Meeting> {
     const from = meeting.status as MeetingStatus;
     if (!canTransition(from, to)) throw new InvalidTransitionError(from, to);
     const [updated] = await tx
@@ -116,7 +143,9 @@ export class MeetingService {
     const q = tx
       .select()
       .from(meetings)
-      .where(and(eq(meetings.id, meetingId), eq(meetings.userId, userId), isNull(meetings.deletedAt)));
+      .where(
+        and(eq(meetings.id, meetingId), eq(meetings.userId, userId), isNull(meetings.deletedAt)),
+      );
     const [m] = forUpdate ? await q.for("update") : await q;
     if (!m) throw Errors.notFound("Meeting");
     return m;
@@ -131,7 +160,9 @@ export class MeetingService {
       transcriptStatus: sql<TranscriptStatus | null>`(select t.status from transcripts t where t.meeting_id = ${MID} order by t.created_at desc limit 1)`,
       summaryStatus: sql<ArtifactStatus | null>`(select a.status from meeting_artifacts a where a.meeting_id = ${MID} and a.artifact_type = 'summary' order by a.version desc limit 1)`,
       minutesStatus: sql<ArtifactStatus | null>`(select a.status from meeting_artifacts a where a.meeting_id = ${MID} and a.artifact_type = 'minutes' order by a.version desc limit 1)`,
-      durationSeconds: sql<number | null>`(select r.duration_seconds from recordings r where r.meeting_id = ${MID})`,
+      durationSeconds: sql<
+        number | null
+      >`(select r.duration_seconds from recordings r where r.meeting_id = ${MID})`,
     };
   }
 
@@ -154,7 +185,9 @@ export class MeetingService {
       scheduledEndAt: m.scheduledEndAt?.toISOString() ?? null,
       durationSeconds:
         m.durationSeconds ??
-        (m.actualStartAt && m.actualEndAt ? Math.round((m.actualEndAt.getTime() - m.actualStartAt.getTime()) / 1000) : null),
+        (m.actualStartAt && m.actualEndAt
+          ? Math.round((m.actualEndAt.getTime() - m.actualStartAt.getTime()) / 1000)
+          : null),
       status,
       failureCode: m.failureCode,
       registrationSource: m.registrationSource,
@@ -182,11 +215,21 @@ export class MeetingService {
       if (q.q) conds.push(ilike(meetings.title, `%${escapeLike(q.q)}%`));
       if (q.view === "upcoming") {
         // Not yet ended, and not already finished/being processed (those belong under "past").
-        conds.push(notInArray(meetings.status, ["completed", "failed", "recording_processing", "deletion_pending"]));
+        conds.push(
+          notInArray(meetings.status, [
+            "completed",
+            "failed",
+            "recording_processing",
+            "deletion_pending",
+          ]),
+        );
         conds.push(
           or(
             gte(meetings.scheduledEndAt, now),
-            and(isNull(meetings.scheduledEndAt), gte(meetings.scheduledStartAt, new Date(now.getTime() - DEFAULT_DURATION_MS))),
+            and(
+              isNull(meetings.scheduledEndAt),
+              gte(meetings.scheduledStartAt, new Date(now.getTime() - DEFAULT_DURATION_MS)),
+            ),
           )!,
         );
       } else if (q.view === "past") {
@@ -194,7 +237,9 @@ export class MeetingService {
       }
       const where = and(...conds);
       const order =
-        q.view === "upcoming" ? [asc(meetings.scheduledStartAt), asc(meetings.id)] : [desc(meetings.scheduledStartAt), desc(meetings.id)];
+        q.view === "upcoming"
+          ? [asc(meetings.scheduledStartAt), asc(meetings.id)]
+          : [desc(meetings.scheduledStartAt), desc(meetings.id)];
 
       const rows = await tx
         .select({ ...getTableColumns(meetings), ...this.statusColumns() })
@@ -203,7 +248,10 @@ export class MeetingService {
         .orderBy(...order)
         .limit(q.pageSize)
         .offset((q.page - 1) * q.pageSize);
-      const [count] = await tx.select({ n: sql<number>`count(*)::int` }).from(meetings).where(where);
+      const [count] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(meetings)
+        .where(where);
       const [stats] = await tx
         .select({
           total: sql<number>`count(*)::int`,
@@ -230,10 +278,15 @@ export class MeetingService {
       const [m] = await tx
         .select({ ...getTableColumns(meetings), ...this.statusColumns() })
         .from(meetings)
-        .where(and(eq(meetings.id, meetingId), eq(meetings.userId, userId), isNull(meetings.deletedAt)));
+        .where(
+          and(eq(meetings.id, meetingId), eq(meetings.userId, userId), isNull(meetings.deletedAt)),
+        );
       if (!m) throw Errors.notFound("Meeting");
       const participants = await tx
-        .select({ displayName: meetingParticipants.displayName, source: meetingParticipants.source })
+        .select({
+          displayName: meetingParticipants.displayName,
+          source: meetingParticipants.source,
+        })
         .from(meetingParticipants)
         .where(eq(meetingParticipants.meetingId, meetingId))
         .orderBy(meetingParticipants.source, meetingParticipants.displayName)
@@ -275,16 +328,26 @@ export class MeetingService {
     opts: { source: "manual" | "auto"; actor: string; correlationId?: string },
   ): Promise<Meeting> {
     const status = meeting.status as MeetingStatus;
-    if (["queued", "joining", "in_progress", "recording_processing", "completed"].includes(status)) return meeting;
+    if (["queued", "joining", "in_progress", "recording_processing", "completed"].includes(status))
+      return meeting;
     if (!this.d.botConfigured()) throw Errors.notConfigured("Meeting recording provider");
     if (!this.d.botSupports(meeting.platform)) {
-      throw Errors.unprocessable("unsupported_platform", "This meeting platform is not supported by the recording provider");
+      throw Errors.unprocessable(
+        "unsupported_platform",
+        "This meeting platform is not supported by the recording provider",
+      );
     }
     if (effectiveEnd(meeting).getTime() <= this.now().getTime()) {
-      throw Errors.unprocessable("meeting_ended", "This meeting has already ended and cannot be recorded");
+      throw Errors.unprocessable(
+        "meeting_ended",
+        "This meeting has already ended and cannot be recorded",
+      );
     }
     if (status !== "scheduled" && status !== "cancelled" && status !== "failed") {
-      throw Errors.conflict("invalid_state", `A meeting in status "${status}" cannot be registered`);
+      throw Errors.conflict(
+        "invalid_state",
+        `A meeting in status "${status}" cannot be registered`,
+      );
     }
     const now = this.now();
     const updated = await this.transition(tx, meeting, "queued", {
@@ -330,7 +393,11 @@ export class MeetingService {
     return { timezone: u.timezone };
   }
 
-  async registerExisting(userId: string, meetingId: string, correlationId?: string): Promise<MeetingDetail> {
+  async registerExisting(
+    userId: string,
+    meetingId: string,
+    correlationId?: string,
+  ): Promise<MeetingDetail> {
     await this.d.db.asUser(userId, async (tx) => {
       await this.assertConsent(tx, userId);
       const m = await this.getOwned(tx, userId, meetingId, true);
@@ -346,7 +413,10 @@ export class MeetingService {
   ): Promise<MeetingDetail> {
     const detected = detectMeetingUrl(body.meetingUrl);
     if (!detected) {
-      throw Errors.unprocessable("unsupported_meeting_url", "Only Google Meet and Microsoft Teams meeting links are supported");
+      throw Errors.unprocessable(
+        "unsupported_meeting_url",
+        "Only Google Meet and Microsoft Teams meeting links are supported",
+      );
     }
     const start = new Date(body.startAt);
     const end = body.endAt ? new Date(body.endAt) : null;
@@ -399,14 +469,23 @@ export class MeetingService {
       const m = await this.getOwned(tx, userId, meetingId, true);
       if (m.status === "cancelled") return;
       if (!CANCELLABLE_STATUSES.includes(m.status as MeetingStatus)) {
-        throw Errors.conflict("not_cancellable", "Recording can only be cancelled before the bot is in the meeting");
+        throw Errors.conflict(
+          "not_cancellable",
+          "Recording can only be cancelled before the bot is in the meeting",
+        );
       }
       await this.cancelInTx(tx, m, "user", correlationId, userId);
     });
     return this.detail(userId, meetingId);
   }
 
-  async cancelInTx(tx: Tx, m: Meeting, source: string, correlationId?: string, actorId?: string): Promise<void> {
+  async cancelInTx(
+    tx: Tx,
+    m: Meeting,
+    source: string,
+    correlationId?: string,
+    actorId?: string,
+  ): Promise<void> {
     await this.transition(tx, m, "cancelled", { source, patch: { substatus: null } });
     await this.d.jobs.cancelPending(tx, "bot_schedule", m.id);
     if (m.providerSessionId) {

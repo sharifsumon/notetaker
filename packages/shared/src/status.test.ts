@@ -17,7 +17,14 @@ describe("meeting state machine", () => {
   });
 
   it("allows the happy path", () => {
-    const path = ["scheduled", "queued", "joining", "in_progress", "recording_processing", "completed"] as const;
+    const path = [
+      "scheduled",
+      "queued",
+      "joining",
+      "in_progress",
+      "recording_processing",
+      "completed",
+    ] as const;
     for (let i = 0; i < path.length - 1; i++) {
       expect(canTransition(path[i]!, path[i + 1]!)).toBe(true);
     }
@@ -28,7 +35,9 @@ describe("meeting state machine", () => {
     expect(canTransition("completed", "in_progress")).toBe(false);
     expect(canTransition("completed", "failed")).toBe(false);
     expect(canTransition("scheduled", "in_progress")).toBe(false);
-    expect(() => assertTransition("recording_processing", "joining")).toThrow(InvalidTransitionError);
+    expect(() => assertTransition("recording_processing", "joining")).toThrow(
+      InvalidTransitionError,
+    );
   });
 
   it("does not allow a completed recording to be marked failed (FR-07)", () => {

@@ -122,7 +122,10 @@ export class OAuthClient {
     try {
       res = await this.fetchImpl(this.ep.token, {
         method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Accept: "application/json",
+        },
         body,
         signal: AbortSignal.timeout(15_000),
       });
@@ -132,9 +135,15 @@ export class OAuthClient {
     const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (!res.ok) {
       if (json.error === "invalid_grant") throw new ReauthRequiredError();
-      throw new ProviderError("oauth_error", `Token endpoint HTTP ${res.status}`, res.status >= 500 || res.status === 429, res.status);
+      throw new ProviderError(
+        "oauth_error",
+        `Token endpoint HTTP ${res.status}`,
+        res.status >= 500 || res.status === 429,
+        res.status,
+      );
     }
-    if (typeof json.access_token !== "string") throw new ProviderError("oauth_error", "No access token", false);
+    if (typeof json.access_token !== "string")
+      throw new ProviderError("oauth_error", "No access token", false);
     return {
       accessToken: json.access_token,
       refreshToken: typeof json.refresh_token === "string" ? json.refresh_token : null,
@@ -144,7 +153,12 @@ export class OAuthClient {
     };
   }
 
-  exchangeCode(code: string, redirectUri: string, codeVerifier: string, scopes: string[]): Promise<TokenSet> {
+  exchangeCode(
+    code: string,
+    redirectUri: string,
+    codeVerifier: string,
+    scopes: string[],
+  ): Promise<TokenSet> {
     const body = new URLSearchParams({
       grant_type: "authorization_code",
       code,
@@ -184,14 +198,18 @@ export class OAuthClient {
     try {
       const r = await jwtVerify(idToken, this.jwks, {
         audience: this.cfg.clientId,
-        issuer: this.provider === "google" ? ["https://accounts.google.com", "accounts.google.com"] : undefined,
+        issuer:
+          this.provider === "google"
+            ? ["https://accounts.google.com", "accounts.google.com"]
+            : undefined,
         clockTolerance: 60,
       });
       payload = r.payload;
     } catch {
       throw new ProviderError("oauth_invalid_id_token", "ID token verification failed", false);
     }
-    if (payload.nonce !== expectedNonce) throw new ProviderError("oauth_invalid_id_token", "Nonce mismatch", false);
+    if (payload.nonce !== expectedNonce)
+      throw new ProviderError("oauth_invalid_id_token", "Nonce mismatch", false);
 
     if (this.provider === "microsoft") {
       // Multi-tenant: issuer must match the token's own tenant id.
@@ -215,7 +233,8 @@ export class OAuthClient {
         name: typeof payload.name === "string" ? payload.name : null,
       };
     }
-    if (typeof payload.sub !== "string") throw new ProviderError("oauth_invalid_id_token", "Missing sub", false);
+    if (typeof payload.sub !== "string")
+      throw new ProviderError("oauth_invalid_id_token", "Missing sub", false);
     return {
       subject: payload.sub,
       tenant: null,

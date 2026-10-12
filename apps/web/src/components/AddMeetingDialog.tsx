@@ -61,12 +61,20 @@ export function AddMeetingDialog() {
             <h2>Record a meeting link</h2>
           </Dialog.Title>
           <Dialog.Description className="muted small">
-            Paste a Google Meet or Microsoft Teams link. A bot joins as a visible participant; the host may need to admit it.
+            Paste a Google Meet or Microsoft Teams link. A bot joins as a visible participant; the
+            host may need to admit it.
           </Dialog.Description>
           <form className="stack" onSubmit={submit}>
             <div className="field">
               <label htmlFor="m-title">Meeting name</label>
-              <input id="m-title" type="text" required maxLength={300} value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input
+                id="m-title"
+                type="text"
+                required
+                maxLength={300}
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
             </div>
             <div className="field">
               <label htmlFor="m-url">Meeting link</label>
@@ -81,18 +89,34 @@ export function AddMeetingDialog() {
                 aria-invalid={!urlOk}
                 aria-describedby="m-url-hint"
               />
-              <span id="m-url-hint" className="hint" style={urlOk ? undefined : { color: "var(--bad)" }}>
-                {urlOk ? "Google Meet or Microsoft Teams links only." : "This isn't a Google Meet or Microsoft Teams meeting link."}
+              <span
+                id="m-url-hint"
+                className="hint"
+                style={urlOk ? undefined : { color: "var(--bad)" }}
+              >
+                {urlOk
+                  ? "Google Meet or Microsoft Teams links only."
+                  : "This isn't a Google Meet or Microsoft Teams meeting link."}
               </span>
             </div>
             <div className="row" style={{ alignItems: "flex-start" }}>
               <div className="field" style={{ flex: "2 1 12rem" }}>
                 <label htmlFor="m-start">Starts</label>
-                <input id="m-start" type="datetime-local" required value={start} onChange={(e) => setStart(e.target.value)} />
+                <input
+                  id="m-start"
+                  type="datetime-local"
+                  required
+                  value={start}
+                  onChange={(e) => setStart(e.target.value)}
+                />
               </div>
               <div className="field" style={{ flex: "1 1 7rem" }}>
                 <label htmlFor="m-len">Length</label>
-                <select id="m-len" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>
+                <select
+                  id="m-len"
+                  value={minutes}
+                  onChange={(e) => setMinutes(Number(e.target.value))}
+                >
                   {[15, 30, 45, 60, 90, 120, 180].map((n) => (
                     <option key={n} value={n}>
                       {n} min
@@ -108,7 +132,11 @@ export function AddMeetingDialog() {
                   Cancel
                 </button>
               </Dialog.Close>
-              <button type="submit" className="btn btn-primary" disabled={!urlOk || register.isPending}>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={!urlOk || register.isPending}
+              >
                 Record meeting
               </button>
             </div>

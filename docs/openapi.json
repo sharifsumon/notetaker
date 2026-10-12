@@ -1,0 +1,3602 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Meeting Notetaker API",
+    "version": "0.1.0",
+    "description": "Cookie-session API. State-changing requests require the `X-CSRF-Token` header (value from GET /api/v1/me). All errors use the envelope `{ error: { code, message, requestId } }`."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "nt_session"
+      },
+      "csrfHeader": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token"
+      }
+    }
+  },
+  "paths": {
+    "/api/v1/webhooks/meeting-provider/{provider}": {
+      "post": {
+        "summary": "Signed meeting-bot provider webhook",
+        "tags": ["Webhooks"],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9_-]{1,40}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Accepted"
+          },
+          "401": {
+            "description": "Verification failed"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/config": {
+      "get": {
+        "summary": "Available sign-in methods",
+        "tags": ["Auth"],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "googleAuth": {
+                      "type": "boolean"
+                    },
+                    "microsoftAuth": {
+                      "type": "boolean"
+                    },
+                    "devLogin": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["googleAuth", "microsoftAuth", "devLogin"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/{provider}": {
+      "get": {
+        "summary": "Start sign-in with Google or Microsoft (redirect)",
+        "tags": ["Auth"],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["google", "microsoft"]
+            }
+          },
+          {
+            "name": "link",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["1"]
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect to identity provider"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/{provider}/callback": {
+      "get": {
+        "summary": "OAuth/OIDC sign-in callback",
+        "tags": ["Auth"],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["google", "microsoft"]
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/dev-login": {
+      "post": {
+        "summary": "DEVELOPMENT ONLY: sign in as a local test user (disabled in production)",
+        "tags": ["Auth"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "format": "email",
+                    "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  }
+                },
+                "required": ["email", "displayName"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "summary": "Sign out (revokes this session)",
+        "tags": ["Auth"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout-all": {
+      "post": {
+        "summary": "Sign out of all sessions",
+        "tags": ["Auth"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "summary": "Current user, settings and CSRF token",
+        "tags": ["Account"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "email": {
+                      "type": ["string", "null"]
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "timezone": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": ["user", "admin"]
+                    },
+                    "autoRegister": {
+                      "type": ["boolean", "null"]
+                    },
+                    "recordingNoticeAcknowledgedAt": {
+                      "type": ["string", "null"]
+                    },
+                    "identities": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": ["google", "microsoft", "dev"]
+                          },
+                          "email": {
+                            "type": ["string", "null"]
+                          }
+                        },
+                        "required": ["provider", "email"]
+                      }
+                    },
+                    "csrfToken": {
+                      "type": "string"
+                    },
+                    "features": {
+                      "type": "object",
+                      "properties": {
+                        "devLogin": {
+                          "type": "boolean"
+                        },
+                        "googleAuth": {
+                          "type": "boolean"
+                        },
+                        "microsoftAuth": {
+                          "type": "boolean"
+                        },
+                        "mockProviders": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["devLogin", "googleAuth", "microsoftAuth", "mockProviders"]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "email",
+                    "displayName",
+                    "timezone",
+                    "role",
+                    "autoRegister",
+                    "recordingNoticeAcknowledgedAt",
+                    "identities",
+                    "csrfToken",
+                    "features"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me/settings": {
+      "patch": {
+        "summary": "Update timezone, auto-registration preference, or acknowledge the recording notice",
+        "tags": ["Account"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "timezone": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "autoRegister": {
+                    "type": "boolean"
+                  },
+                  "acknowledgeRecordingNotice": {
+                    "type": "boolean",
+                    "const": true
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "email": {
+                      "type": ["string", "null"]
+                    },
+                    "displayName": {
+                      "type": "string"
+                    },
+                    "timezone": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string",
+                      "enum": ["user", "admin"]
+                    },
+                    "autoRegister": {
+                      "type": ["boolean", "null"]
+                    },
+                    "recordingNoticeAcknowledgedAt": {
+                      "type": ["string", "null"]
+                    },
+                    "identities": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "provider": {
+                            "type": "string",
+                            "enum": ["google", "microsoft", "dev"]
+                          },
+                          "email": {
+                            "type": ["string", "null"]
+                          }
+                        },
+                        "required": ["provider", "email"]
+                      }
+                    },
+                    "csrfToken": {
+                      "type": "string"
+                    },
+                    "features": {
+                      "type": "object",
+                      "properties": {
+                        "devLogin": {
+                          "type": "boolean"
+                        },
+                        "googleAuth": {
+                          "type": "boolean"
+                        },
+                        "microsoftAuth": {
+                          "type": "boolean"
+                        },
+                        "mockProviders": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["devLogin", "googleAuth", "microsoftAuth", "mockProviders"]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "email",
+                    "displayName",
+                    "timezone",
+                    "role",
+                    "autoRegister",
+                    "recordingNoticeAcknowledgedAt",
+                    "identities",
+                    "csrfToken",
+                    "features"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calendar-connections": {
+      "get": {
+        "summary": "List calendar connections",
+        "tags": ["Calendar"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "provider": {
+                            "type": "string",
+                            "enum": ["google_calendar", "microsoft_calendar"]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": ["active", "reconnect_required", "error", "disconnected"]
+                          },
+                          "accountEmail": {
+                            "type": ["string", "null"]
+                          },
+                          "scopes": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          "lastSyncedAt": {
+                            "type": ["string", "null"]
+                          },
+                          "lastErrorCode": {
+                            "type": ["string", "null"]
+                          },
+                          "syncInProgress": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "provider",
+                          "status",
+                          "accountEmail",
+                          "scopes",
+                          "lastSyncedAt",
+                          "lastErrorCode",
+                          "syncInProgress"
+                        ]
+                      }
+                    },
+                    "available": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": ["google_calendar", "microsoft_calendar"]
+                      }
+                    }
+                  },
+                  "required": ["items", "available"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calendar-connections/{provider}/connect": {
+      "post": {
+        "summary": "Start calendar authorization (separate consent from sign-in). Returns the URL to navigate to.",
+        "tags": ["Calendar"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["google_calendar", "microsoft_calendar"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "authorizationUrl": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["authorizationUrl"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calendar-connections/{provider}/callback": {
+      "get": {
+        "summary": "Calendar OAuth callback",
+        "tags": ["Calendar"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["google_calendar", "microsoft_calendar"]
+            }
+          },
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 4096
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 512
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calendar-connections/{id}": {
+      "delete": {
+        "summary": "Disconnect a calendar (revokes and deletes tokens)",
+        "tags": ["Calendar"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/calendar-connections/{id}/sync": {
+      "post": {
+        "summary": "Request an immediate sync",
+        "tags": ["Calendar"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings": {
+      "get": {
+        "summary": "List the current user's meetings (paginated, filterable)",
+        "tags": ["Meetings"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+            }
+          },
+          {
+            "name": "platform",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["google_meet", "microsoft_teams"]
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "scheduled",
+                "queued",
+                "joining",
+                "in_progress",
+                "recording_processing",
+                "completed",
+                "failed",
+                "cancelled",
+                "unsupported",
+                "deletion_pending"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "type": "string",
+              "enum": ["upcoming", "past", "all"]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10000
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "platform": {
+                            "type": "string",
+                            "enum": ["google_meet", "microsoft_teams"]
+                          },
+                          "scheduledStartAt": {
+                            "type": "string"
+                          },
+                          "scheduledEndAt": {
+                            "type": ["string", "null"]
+                          },
+                          "durationSeconds": {
+                            "type": ["number", "null"]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "scheduled",
+                              "queued",
+                              "joining",
+                              "in_progress",
+                              "recording_processing",
+                              "completed",
+                              "failed",
+                              "cancelled",
+                              "unsupported",
+                              "deletion_pending"
+                            ]
+                          },
+                          "failureCode": {
+                            "type": ["string", "null"]
+                          },
+                          "registrationSource": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": ["manual", "auto"]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "recording": {
+                            "type": "string",
+                            "enum": ["none", "processing", "ready", "failed"]
+                          },
+                          "transcript": {
+                            "type": "string",
+                            "enum": ["none", "processing", "ready", "failed"]
+                          },
+                          "summary": {
+                            "type": "string",
+                            "enum": ["none", "processing", "ready", "failed"]
+                          },
+                          "minutes": {
+                            "type": "string",
+                            "enum": ["none", "processing", "ready", "failed"]
+                          },
+                          "canRegister": {
+                            "type": "boolean"
+                          },
+                          "canCancel": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "platform",
+                          "scheduledStartAt",
+                          "scheduledEndAt",
+                          "durationSeconds",
+                          "status",
+                          "failureCode",
+                          "registrationSource",
+                          "recording",
+                          "transcript",
+                          "summary",
+                          "minutes",
+                          "canRegister",
+                          "canCancel"
+                        ]
+                      }
+                    },
+                    "page": {
+                      "type": "number"
+                    },
+                    "pageSize": {
+                      "type": "number"
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "stats": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "number"
+                        },
+                        "completed": {
+                          "type": "number"
+                        },
+                        "processing": {
+                          "type": "number"
+                        },
+                        "failed": {
+                          "type": "number"
+                        }
+                      },
+                      "required": ["total", "completed", "processing", "failed"]
+                    }
+                  },
+                  "required": ["items", "page", "pageSize", "total", "stats"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings/register": {
+      "post": {
+        "summary": "Register a meeting for recording: an existing synced meeting ({meetingId}) or an ad-hoc Meet/Teams link. Idempotent.",
+        "tags": ["Meetings"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "meetingId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      }
+                    },
+                    "required": ["meetingId"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      "meetingUrl": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 2048
+                      },
+                      "startAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      },
+                      "endAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                      }
+                    },
+                    "required": ["title", "meetingUrl", "startAt"],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Registered",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "platform": {
+                      "type": "string",
+                      "enum": ["google_meet", "microsoft_teams"]
+                    },
+                    "scheduledStartAt": {
+                      "type": "string"
+                    },
+                    "scheduledEndAt": {
+                      "type": ["string", "null"]
+                    },
+                    "durationSeconds": {
+                      "type": ["number", "null"]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "scheduled",
+                        "queued",
+                        "joining",
+                        "in_progress",
+                        "recording_processing",
+                        "completed",
+                        "failed",
+                        "cancelled",
+                        "unsupported",
+                        "deletion_pending"
+                      ]
+                    },
+                    "failureCode": {
+                      "type": ["string", "null"]
+                    },
+                    "registrationSource": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["manual", "auto"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "recording": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "transcript": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "summary": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "minutes": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "canRegister": {
+                      "type": "boolean"
+                    },
+                    "canCancel": {
+                      "type": "boolean"
+                    },
+                    "actualStartAt": {
+                      "type": ["string", "null"]
+                    },
+                    "actualEndAt": {
+                      "type": ["string", "null"]
+                    },
+                    "timezoneAtCreation": {
+                      "type": "string"
+                    },
+                    "failureMessage": {
+                      "type": ["string", "null"]
+                    },
+                    "substatus": {
+                      "type": ["string", "null"]
+                    },
+                    "participants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["displayName", "source"]
+                      }
+                    },
+                    "statusHistory": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "scheduled",
+                                  "queued",
+                                  "joining",
+                                  "in_progress",
+                                  "recording_processing",
+                                  "completed",
+                                  "failed",
+                                  "cancelled",
+                                  "unsupported",
+                                  "deletion_pending"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "to": {
+                            "type": "string",
+                            "enum": [
+                              "scheduled",
+                              "queued",
+                              "joining",
+                              "in_progress",
+                              "recording_processing",
+                              "completed",
+                              "failed",
+                              "cancelled",
+                              "unsupported",
+                              "deletion_pending"
+                            ]
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "reasonCode": {
+                            "type": ["string", "null"]
+                          },
+                          "occurredAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["from", "to", "source", "reasonCode", "occurredAt"]
+                      }
+                    },
+                    "fromCalendar": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "platform",
+                    "scheduledStartAt",
+                    "scheduledEndAt",
+                    "durationSeconds",
+                    "status",
+                    "failureCode",
+                    "registrationSource",
+                    "recording",
+                    "transcript",
+                    "summary",
+                    "minutes",
+                    "canRegister",
+                    "canCancel",
+                    "actualStartAt",
+                    "actualEndAt",
+                    "timezoneAtCreation",
+                    "failureMessage",
+                    "substatus",
+                    "participants",
+                    "statusHistory",
+                    "fromCalendar"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings/{meetingId}": {
+      "get": {
+        "summary": "Meeting details incl. status timeline",
+        "tags": ["Meetings"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meetingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "platform": {
+                      "type": "string",
+                      "enum": ["google_meet", "microsoft_teams"]
+                    },
+                    "scheduledStartAt": {
+                      "type": "string"
+                    },
+                    "scheduledEndAt": {
+                      "type": ["string", "null"]
+                    },
+                    "durationSeconds": {
+                      "type": ["number", "null"]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "scheduled",
+                        "queued",
+                        "joining",
+                        "in_progress",
+                        "recording_processing",
+                        "completed",
+                        "failed",
+                        "cancelled",
+                        "unsupported",
+                        "deletion_pending"
+                      ]
+                    },
+                    "failureCode": {
+                      "type": ["string", "null"]
+                    },
+                    "registrationSource": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["manual", "auto"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "recording": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "transcript": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "summary": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "minutes": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "canRegister": {
+                      "type": "boolean"
+                    },
+                    "canCancel": {
+                      "type": "boolean"
+                    },
+                    "actualStartAt": {
+                      "type": ["string", "null"]
+                    },
+                    "actualEndAt": {
+                      "type": ["string", "null"]
+                    },
+                    "timezoneAtCreation": {
+                      "type": "string"
+                    },
+                    "failureMessage": {
+                      "type": ["string", "null"]
+                    },
+                    "substatus": {
+                      "type": ["string", "null"]
+                    },
+                    "participants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["displayName", "source"]
+                      }
+                    },
+                    "statusHistory": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "scheduled",
+                                  "queued",
+                                  "joining",
+                                  "in_progress",
+                                  "recording_processing",
+                                  "completed",
+                                  "failed",
+                                  "cancelled",
+                                  "unsupported",
+                                  "deletion_pending"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "to": {
+                            "type": "string",
+                            "enum": [
+                              "scheduled",
+                              "queued",
+                              "joining",
+                              "in_progress",
+                              "recording_processing",
+                              "completed",
+                              "failed",
+                              "cancelled",
+                              "unsupported",
+                              "deletion_pending"
+                            ]
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "reasonCode": {
+                            "type": ["string", "null"]
+                          },
+                          "occurredAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["from", "to", "source", "reasonCode", "occurredAt"]
+                      }
+                    },
+                    "fromCalendar": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "platform",
+                    "scheduledStartAt",
+                    "scheduledEndAt",
+                    "durationSeconds",
+                    "status",
+                    "failureCode",
+                    "registrationSource",
+                    "recording",
+                    "transcript",
+                    "summary",
+                    "minutes",
+                    "canRegister",
+                    "canCancel",
+                    "actualStartAt",
+                    "actualEndAt",
+                    "timezoneAtCreation",
+                    "failureMessage",
+                    "substatus",
+                    "participants",
+                    "statusHistory",
+                    "fromCalendar"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Request deletion of a meeting and all its recordings/derived data (asynchronous)",
+        "tags": ["Meetings"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meetingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Deletion queued"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings/{meetingId}/cancel": {
+      "post": {
+        "summary": "Cancel recording before the bot is in the meeting",
+        "tags": ["Meetings"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meetingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "title": {
+                      "type": "string"
+                    },
+                    "platform": {
+                      "type": "string",
+                      "enum": ["google_meet", "microsoft_teams"]
+                    },
+                    "scheduledStartAt": {
+                      "type": "string"
+                    },
+                    "scheduledEndAt": {
+                      "type": ["string", "null"]
+                    },
+                    "durationSeconds": {
+                      "type": ["number", "null"]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "scheduled",
+                        "queued",
+                        "joining",
+                        "in_progress",
+                        "recording_processing",
+                        "completed",
+                        "failed",
+                        "cancelled",
+                        "unsupported",
+                        "deletion_pending"
+                      ]
+                    },
+                    "failureCode": {
+                      "type": ["string", "null"]
+                    },
+                    "registrationSource": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["manual", "auto"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "recording": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "transcript": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "summary": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "minutes": {
+                      "type": "string",
+                      "enum": ["none", "processing", "ready", "failed"]
+                    },
+                    "canRegister": {
+                      "type": "boolean"
+                    },
+                    "canCancel": {
+                      "type": "boolean"
+                    },
+                    "actualStartAt": {
+                      "type": ["string", "null"]
+                    },
+                    "actualEndAt": {
+                      "type": ["string", "null"]
+                    },
+                    "timezoneAtCreation": {
+                      "type": "string"
+                    },
+                    "failureMessage": {
+                      "type": ["string", "null"]
+                    },
+                    "substatus": {
+                      "type": ["string", "null"]
+                    },
+                    "participants": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "displayName": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["displayName", "source"]
+                      }
+                    },
+                    "statusHistory": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "from": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "scheduled",
+                                  "queued",
+                                  "joining",
+                                  "in_progress",
+                                  "recording_processing",
+                                  "completed",
+                                  "failed",
+                                  "cancelled",
+                                  "unsupported",
+                                  "deletion_pending"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "to": {
+                            "type": "string",
+                            "enum": [
+                              "scheduled",
+                              "queued",
+                              "joining",
+                              "in_progress",
+                              "recording_processing",
+                              "completed",
+                              "failed",
+                              "cancelled",
+                              "unsupported",
+                              "deletion_pending"
+                            ]
+                          },
+                          "source": {
+                            "type": "string"
+                          },
+                          "reasonCode": {
+                            "type": ["string", "null"]
+                          },
+                          "occurredAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["from", "to", "source", "reasonCode", "occurredAt"]
+                      }
+                    },
+                    "fromCalendar": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "title",
+                    "platform",
+                    "scheduledStartAt",
+                    "scheduledEndAt",
+                    "durationSeconds",
+                    "status",
+                    "failureCode",
+                    "registrationSource",
+                    "recording",
+                    "transcript",
+                    "summary",
+                    "minutes",
+                    "canRegister",
+                    "canCancel",
+                    "actualStartAt",
+                    "actualEndAt",
+                    "timezoneAtCreation",
+                    "failureMessage",
+                    "substatus",
+                    "participants",
+                    "statusHistory",
+                    "fromCalendar"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings/{meetingId}/recording": {
+      "get": {
+        "summary": "Recording metadata and authorized playback/download URLs",
+        "tags": ["Recording"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meetingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["pending", "processing", "ready", "failed", "deleted"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "mimeType": {
+                      "type": ["string", "null"]
+                    },
+                    "durationSeconds": {
+                      "type": ["number", "null"]
+                    },
+                    "fileSizeBytes": {
+                      "type": ["number", "null"]
+                    },
+                    "streamUrl": {
+                      "type": ["string", "null"]
+                    },
+                    "downloadUrl": {
+                      "type": ["string", "null"]
+                    },
+                    "errorCode": {
+                      "type": ["string", "null"]
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "mimeType",
+                    "durationSeconds",
+                    "fileSizeBytes",
+                    "streamUrl",
+                    "downloadUrl",
+                    "errorCode"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings/{meetingId}/recording/stream": {
+      "get": {
+        "summary": "Stream the recording (supports HTTP Range)",
+        "tags": ["Recording"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meetingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audio",
+            "content": {
+              "audio/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Partial audio"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings/{meetingId}/recording/download": {
+      "get": {
+        "summary": "Download the recording",
+        "tags": ["Recording"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meetingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audio file",
+            "content": {
+              "audio/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings/{meetingId}/transcript": {
+      "get": {
+        "summary": "Transcript segments (paginated)",
+        "tags": ["Artifacts"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meetingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 0,
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 500,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["pending", "processing", "completed", "failed"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "language": {
+                      "type": ["string", "null"]
+                    },
+                    "provider": {
+                      "type": ["string", "null"]
+                    },
+                    "segments": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "startMs": {
+                            "type": ["number", "null"]
+                          },
+                          "endMs": {
+                            "type": ["number", "null"]
+                          },
+                          "speaker": {
+                            "type": ["string", "null"]
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "required": ["startMs", "endMs", "speaker", "text"]
+                      }
+                    },
+                    "totalSegments": {
+                      "type": "number"
+                    },
+                    "speakerLabelsVerified": {
+                      "type": "boolean",
+                      "const": false
+                    },
+                    "errorCode": {
+                      "type": ["string", "null"]
+                    },
+                    "isMock": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "status",
+                    "language",
+                    "provider",
+                    "segments",
+                    "totalSegments",
+                    "speakerLabelsVerified",
+                    "errorCode",
+                    "isMock"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings/{meetingId}/summary": {
+      "get": {
+        "summary": "AI summary for the meeting",
+        "tags": ["Artifacts"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meetingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["pending", "processing", "completed", "failed"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "version": {
+                      "type": ["number", "null"]
+                    },
+                    "renderedText": {
+                      "type": ["string", "null"]
+                    },
+                    "generatedAt": {
+                      "type": ["string", "null"]
+                    },
+                    "provider": {
+                      "type": ["string", "null"]
+                    },
+                    "model": {
+                      "type": ["string", "null"]
+                    },
+                    "promptVersion": {
+                      "type": ["string", "null"]
+                    },
+                    "errorCode": {
+                      "type": ["string", "null"]
+                    },
+                    "isMock": {
+                      "type": "boolean"
+                    },
+                    "canGenerate": {
+                      "type": "boolean"
+                    },
+                    "content": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "purpose": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 1000
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "keyPoints": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "decisions": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "risks": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "nextSteps": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "uncertainties": {
+                              "default": [],
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "insufficientSource": {
+                              "default": false,
+                              "type": "boolean"
+                            },
+                            "note": {
+                              "default": null,
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 1000
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": ["purpose", "keyPoints", "decisions", "risks", "nextSteps"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "version",
+                    "renderedText",
+                    "generatedAt",
+                    "provider",
+                    "model",
+                    "promptVersion",
+                    "errorCode",
+                    "isMock",
+                    "canGenerate",
+                    "content"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings/{meetingId}/summary/generate": {
+      "post": {
+        "summary": "Generate (or explicitly regenerate) the summary. Idempotent while a generation is in flight.",
+        "tags": ["Artifacts"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meetingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "regenerate": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Generation queued or already in progress"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings/{meetingId}/minutes": {
+      "get": {
+        "summary": "Minutes of Meeting (MoM) for the meeting",
+        "tags": ["Artifacts"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meetingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": ["pending", "processing", "completed", "failed"]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "version": {
+                      "type": ["number", "null"]
+                    },
+                    "renderedText": {
+                      "type": ["string", "null"]
+                    },
+                    "generatedAt": {
+                      "type": ["string", "null"]
+                    },
+                    "provider": {
+                      "type": ["string", "null"]
+                    },
+                    "model": {
+                      "type": ["string", "null"]
+                    },
+                    "promptVersion": {
+                      "type": ["string", "null"]
+                    },
+                    "errorCode": {
+                      "type": ["string", "null"]
+                    },
+                    "isMock": {
+                      "type": "boolean"
+                    },
+                    "canGenerate": {
+                      "type": "boolean"
+                    },
+                    "content": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "objective": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 1000
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "discussionPoints": {
+                              "maxItems": 40,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "topic": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 300
+                                  },
+                                  "summary": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 2000
+                                  }
+                                },
+                                "required": ["topic", "summary"]
+                              }
+                            },
+                            "decisions": {
+                              "maxItems": 40,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "decision": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "maxLength": 500
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["decision", "evidence"]
+                              }
+                            },
+                            "proposals": {
+                              "maxItems": 40,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "proposal": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "maxLength": 500
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["proposal", "evidence"]
+                              }
+                            },
+                            "actionItems": {
+                              "maxItems": 60,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "task": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 1000
+                                  },
+                                  "owner": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "dueDate": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 100
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": ["open", "completed", "not_specified"]
+                                  },
+                                  "evidence": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "maxLength": 500
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": ["task", "owner", "dueDate", "status", "evidence"]
+                              }
+                            },
+                            "risks": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "openQuestions": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "nextSteps": {
+                              "maxItems": 30,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "nextMeeting": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 500
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "meetingDetails": {
+                              "type": "object",
+                              "properties": {
+                                "title": {
+                                  "type": "string"
+                                },
+                                "startAt": {
+                                  "type": ["string", "null"]
+                                },
+                                "endAt": {
+                                  "type": ["string", "null"]
+                                },
+                                "timezone": {
+                                  "type": "string"
+                                },
+                                "platform": {
+                                  "type": "string"
+                                },
+                                "participants": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "participantsSource": {
+                                  "type": "string",
+                                  "enum": ["provider", "calendar", "none"]
+                                }
+                              },
+                              "required": [
+                                "title",
+                                "startAt",
+                                "endAt",
+                                "timezone",
+                                "platform",
+                                "participants",
+                                "participantsSource"
+                              ]
+                            },
+                            "insufficientSource": {
+                              "default": false,
+                              "type": "boolean"
+                            },
+                            "note": {
+                              "default": null,
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 1000
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "objective",
+                            "discussionPoints",
+                            "decisions",
+                            "proposals",
+                            "actionItems",
+                            "risks",
+                            "openQuestions",
+                            "nextSteps",
+                            "nextMeeting",
+                            "meetingDetails"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "status",
+                    "version",
+                    "renderedText",
+                    "generatedAt",
+                    "provider",
+                    "model",
+                    "promptVersion",
+                    "errorCode",
+                    "isMock",
+                    "canGenerate",
+                    "content"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/meetings/{meetingId}/minutes/generate": {
+      "post": {
+        "summary": "Generate (or explicitly regenerate) the minutes. Idempotent while a generation is in flight.",
+        "tags": ["Artifacts"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "meetingId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "regenerate": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Generation queued or already in progress"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/overview": {
+      "get": {
+        "summary": "Provider health, job status counts and queue depth",
+        "tags": ["Admin"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/jobs": {
+      "get": {
+        "summary": "List jobs (safe metadata only)",
+        "tags": ["Admin"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "queued", "running", "succeeded", "failed", "cancelled"]
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "calendar_sync",
+                "bot_schedule",
+                "bot_cancel",
+                "recording_ingest",
+                "transcribe",
+                "generate_summary",
+                "generate_minutes",
+                "meeting_delete"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          "type": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string"
+                          },
+                          "attempts": {
+                            "type": "number"
+                          },
+                          "entityId": {
+                            "type": ["string", "null"]
+                          },
+                          "errorCode": {
+                            "type": ["string", "null"]
+                          },
+                          "runAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "type",
+                          "status",
+                          "attempts",
+                          "entityId",
+                          "errorCode",
+                          "runAt",
+                          "updatedAt"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "number"
+                    }
+                  },
+                  "required": ["items", "total"]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/admin/jobs/{jobId}/retry": {
+      "post": {
+        "summary": "Retry a failed (dead-lettered) job. Handlers are idempotent.",
+        "tags": ["Admin"],
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfHeader": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          },
+          "default": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "object",
+                      "properties": {
+                        "code": {
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "requestId": {
+                          "type": "string"
+                        },
+                        "details": {}
+                      },
+                      "required": ["code", "message"]
+                    }
+                  },
+                  "required": ["error"]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

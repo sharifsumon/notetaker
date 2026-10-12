@@ -18,12 +18,21 @@ export interface JobHandler {
 export type HandlerMap = Partial<Record<JobType, JobHandler>>;
 
 export function classifyError(err: unknown): { code: string; retryable: boolean; message: string } {
-  if (err instanceof ProviderError) return { code: err.code, retryable: err.retryable, message: err.message };
-  if (err instanceof PermanentJobError) return { code: err.code, retryable: false, message: err.message };
-  if (err instanceof ReauthRequiredError) return { code: "calendar_reconnect_required", retryable: false, message: err.message };
-  if (err instanceof InvalidTransitionError) return { code: "invalid_transition", retryable: false, message: err.message };
-  if (err instanceof AppError) return { code: err.code, retryable: err.status >= 500, message: err.message };
-  return { code: "internal_error", retryable: true, message: err instanceof Error ? err.name : "unknown" };
+  if (err instanceof ProviderError)
+    return { code: err.code, retryable: err.retryable, message: err.message };
+  if (err instanceof PermanentJobError)
+    return { code: err.code, retryable: false, message: err.message };
+  if (err instanceof ReauthRequiredError)
+    return { code: "calendar_reconnect_required", retryable: false, message: err.message };
+  if (err instanceof InvalidTransitionError)
+    return { code: "invalid_transition", retryable: false, message: err.message };
+  if (err instanceof AppError)
+    return { code: err.code, retryable: err.status >= 500, message: err.message };
+  return {
+    code: "internal_error",
+    retryable: true,
+    message: err instanceof Error ? err.name : "unknown",
+  };
 }
 
 const QUEUE_FOR: Record<JobType, "realtime" | "media" | "ai"> = {
@@ -65,11 +74,18 @@ export class JobRunner {
       return "succeeded";
     } catch (err) {
       const c = classifyError(err);
-      const outcome = await this.db.asSystem((tx) => this.jobService.fail(tx, job, c.code, c.message, c.retryable));
+      const outcome = await this.db.asSystem((tx) =>
+        this.jobService.fail(tx, job, c.code, c.message, c.retryable),
+      );
       this.metrics.jobsProcessed.inc({ type: job.type, outcome });
-      log.warn({ code: c.code, retryable: c.retryable, outcome, errName: (err as Error)?.name }, "job failed");
+      log.warn(
+        { code: c.code, retryable: c.retryable, outcome, errName: (err as Error)?.name },
+        "job failed",
+      );
       if (outcome === "failed" && handler?.onFinalFailure) {
-        await handler.onFinalFailure(job, c.code).catch((e: Error) => log.error({ err: e.message }, "onFinalFailure error"));
+        await handler
+          .onFinalFailure(job, c.code)
+          .catch((e: Error) => log.error({ err: e.message }, "onFinalFailure error"));
       }
       return outcome;
     } finally {
@@ -123,7 +139,9 @@ export class BullDispatcher {
         },
         { connection: this.connection, concurrency: this.concurrency[name] },
       );
-      w.on("error", (err) => this.logger.error({ err: err.message, queue: name }, "bullmq worker error"));
+      w.on("error", (err) =>
+        this.logger.error({ err: err.message, queue: name }, "bullmq worker error"),
+      );
       this.workers.push(w);
     }
     this.timer = setInterval(() => void this.tick(), pollMs);
@@ -139,11 +157,21 @@ export class BullDispatcher {
           await this.queues[QUEUE_FOR[job.type as JobType] ?? "realtime"].add(
             job.type,
             { jobId: job.id },
-            { jobId: `${job.id}-${job.attempts}`, removeOnComplete: 1000, removeOnFail: 1000, attempts: 1 },
+            {
+              jobId: `${job.id}-${job.attempts}`,
+              removeOnComplete: 1000,
+              removeOnFail: 1000,
+              attempts: 1,
+            },
           );
         } catch (err) {
-          this.logger.error({ jobId: job.id, err: (err as Error).message }, "dispatch failed; returning job to pending");
-          await this.db.asSystem((tx) => tx.update(jobs).set({ status: "pending" }).where(eq(jobs.id, job.id)));
+          this.logger.error(
+            { jobId: job.id, err: (err as Error).message },
+            "dispatch failed; returning job to pending",
+          );
+          await this.db.asSystem((tx) =>
+            tx.update(jobs).set({ status: "pending" }).where(eq(jobs.id, job.id)),
+          );
         }
       }
     } catch (err) {
@@ -155,7 +183,8 @@ export class BullDispatcher {
 
   async queueCounts(): Promise<Record<string, Record<string, number>>> {
     const out: Record<string, Record<string, number>> = {};
-    for (const [name, q] of Object.entries(this.queues)) out[name] = await q.getJobCounts("waiting", "active", "delayed", "failed");
+    for (const [name, q] of Object.entries(this.queues))
+      out[name] = await q.getJobCounts("waiting", "active", "delayed", "failed");
     return out;
   }
 

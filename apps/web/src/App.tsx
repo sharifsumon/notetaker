@@ -1,6 +1,13 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { createBrowserRouter, Navigate, Outlet, RouterProvider, useLocation, type RouteObject } from "react-router";
+import {
+  createBrowserRouter,
+  Navigate,
+  Outlet,
+  RouterProvider,
+  useLocation,
+  type RouteObject,
+} from "react-router";
 import { Layout } from "./components/Layout";
 import { ErrorNotice, ToastProvider } from "./components/ui";
 import { ApiError, setUnauthenticatedHandler } from "./lib/api";
@@ -18,7 +25,12 @@ import { SettingsPage } from "./pages/Settings";
 function RequireAuth() {
   const me = useMe();
   const location = useLocation();
-  if (me.isLoading) return <p className="muted" style={{ padding: "2rem" }}>Loading…</p>;
+  if (me.isLoading)
+    return (
+      <p className="muted" style={{ padding: "2rem" }}>
+        Loading…
+      </p>
+    );
   if (me.isError) {
     return (
       <div style={{ padding: "2rem" }}>
@@ -27,7 +39,11 @@ function RequireAuth() {
     );
   }
   if (!me.data) return <Navigate to="/login" replace />;
-  if (!me.data.recordingNoticeAcknowledgedAt && location.pathname === "/" && !sessionStorageGet("onboarding-skipped")) {
+  if (
+    !me.data.recordingNoticeAcknowledgedAt &&
+    location.pathname === "/" &&
+    !sessionStorageGet("onboarding-skipped")
+  ) {
     return <Navigate to="/onboarding" replace />;
   }
   return <Layout me={me.data} />;
@@ -68,7 +84,8 @@ export function makeQueryClient() {
   return new QueryClient({
     defaultOptions: {
       queries: {
-        retry: (count, err) => !(err instanceof ApiError && err.status >= 400 && err.status < 500) && count < 2,
+        retry: (count, err) =>
+          !(err instanceof ApiError && err.status >= 400 && err.status < 500) && count < 2,
         refetchOnWindowFocus: true,
       },
     },
@@ -82,7 +99,8 @@ export function App() {
   useEffect(() => {
     // Session expired / revoked anywhere: refresh identity, which routes to sign-in.
     setUnauthenticatedHandler(() => {
-      if (!window.location.pathname.startsWith("/login")) void queryClient.invalidateQueries({ queryKey: ["me"] });
+      if (!window.location.pathname.startsWith("/login"))
+        void queryClient.invalidateQueries({ queryKey: ["me"] });
     });
     return () => setUnauthenticatedHandler(null);
   }, []);

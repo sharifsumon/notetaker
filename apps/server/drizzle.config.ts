@@ -5,6 +5,9 @@ export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   dbCredentials: {
-    url: process.env.DATABASE_MIGRATION_URL ?? process.env.DATABASE_URL ?? "postgres://localhost/notetaker",
+    url:
+      process.env.DATABASE_MIGRATION_URL ??
+      process.env.DATABASE_URL ??
+      "postgres://localhost/notetaker",
   },
 });

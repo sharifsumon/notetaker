@@ -5,7 +5,7 @@ import { createContainer } from "./container";
 import { createLogger } from "./lib/logger";
 
 const env = loadEnv();
-const logger = createLogger(env.LOG_LEVEL, env.NODE_ENV === "development");
+const logger = createLogger(env.LOG_LEVEL, env.LOG_FORMAT === "pretty");
 const container = createContainer(env, logger);
 const redis = new Redis(env.REDIS_URL, { maxRetriesPerRequest: 2, lazyConnect: false });
 redis.on("error", (err) => logger.warn({ err: err.message }, "redis error"));

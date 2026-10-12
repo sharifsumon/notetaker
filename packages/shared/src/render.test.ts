@@ -17,7 +17,13 @@ const minutes = MinutesContentSchema.parse({
   decisions: [{ decision: "Ship v2 in November", evidence: "we agreed to ship in November" }],
   proposals: [{ proposal: "Move standup to 10am", evidence: null }],
   actionItems: [
-    { task: "Draft the job post", owner: "Asha", dueDate: "Friday", status: "open", evidence: null },
+    {
+      task: "Draft the job post",
+      owner: "Asha",
+      dueDate: "Friday",
+      status: "open",
+      evidence: null,
+    },
     { task: "Review budget", owner: null, dueDate: null, status: "not_specified", evidence: null },
   ],
   risks: [],
@@ -30,7 +36,15 @@ describe("renderMinutesText", () => {
   const text = renderMinutesText(minutes);
 
   it("preserves headings and action items", () => {
-    for (const h of ["MEETING DETAILS", "OBJECTIVE", "DISCUSSION POINTS", "DECISIONS", "ACTION ITEMS", "OPEN QUESTIONS", "NEXT STEPS"]) {
+    for (const h of [
+      "MEETING DETAILS",
+      "OBJECTIVE",
+      "DISCUSSION POINTS",
+      "DECISIONS",
+      "ACTION ITEMS",
+      "OPEN QUESTIONS",
+      "NEXT STEPS",
+    ]) {
       expect(text).toContain(h);
     }
     expect(text).toContain("1. Draft the job post");

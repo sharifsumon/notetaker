@@ -43,12 +43,16 @@ export async function api<T>(
       signal: init.signal,
     });
   } catch {
-    throw new ApiError(0, "network_error", "Can't reach the server. Check your connection and try again.");
+    throw new ApiError(
+      0,
+      "network_error",
+      "Can't reach the server. Check your connection and try again.",
+    );
   }
   if (res.status === 204) return undefined as T;
-  const data = (await res.json().catch(() => null)) as
-    | { error?: { code?: string; message?: string; requestId?: string } }
-    | null;
+  const data = (await res.json().catch(() => null)) as {
+    error?: { code?: string; message?: string; requestId?: string };
+  } | null;
   if (!res.ok) {
     if (res.status === 401 && onUnauthenticated) onUnauthenticated();
     throw new ApiError(

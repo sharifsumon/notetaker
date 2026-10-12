@@ -23,7 +23,11 @@ export interface MeetingBotProvider {
    * Authenticates and parses a webhook delivery. MUST verify the signature and timestamp
    * and throw `WebhookVerificationError` on any failure. Returns normalized events.
    */
-  verifyAndParseWebhook(rawBody: Buffer, headers: Record<string, string | undefined>, now: Date): ProviderEvent[];
+  verifyAndParseWebhook(
+    rawBody: Buffer,
+    headers: Record<string, string | undefined>,
+    now: Date,
+  ): ProviderEvent[];
   healthCheck(): Promise<{ ok: boolean; detail?: string }>;
 }
 

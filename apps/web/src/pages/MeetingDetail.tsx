@@ -1,6 +1,20 @@
-import { CANCELLABLE_STATUSES, describeError, MEETING_STATUS_LABELS, PLATFORM_LABELS, type Me, type MeetingDetail } from "@notetaker/shared";
+import {
+  CANCELLABLE_STATUSES,
+  describeError,
+  MEETING_STATUS_LABELS,
+  PLATFORM_LABELS,
+  type Me,
+  type MeetingDetail,
+} from "@notetaker/shared";
 import * as Tabs from "@radix-ui/react-tabs";
-import { ArrowLeft, FileText, Headphones, ListChecks, MessageSquareText, Trash2 } from "lucide-react";
+import {
+  ArrowLeft,
+  FileText,
+  Headphones,
+  ListChecks,
+  MessageSquareText,
+  Trash2,
+} from "lucide-react";
 import { useEffect } from "react";
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router";
 import { AudioPlayer } from "../components/AudioPlayer";
@@ -20,13 +34,38 @@ function RecordingPanel({ m }: { m: MeetingDetail }) {
     if (rec.isError) return <ErrorNotice error={rec.error} onRetry={() => void rec.refetch()} />;
     const r = rec.data!;
     if (r.status === "ready" && r.streamUrl && r.downloadUrl) {
-      return <AudioPlayer src={r.streamUrl} downloadUrl={r.downloadUrl} knownDuration={r.durationSeconds} title={m.title} />;
+      return (
+        <AudioPlayer
+          src={r.streamUrl}
+          downloadUrl={r.downloadUrl}
+          knownDuration={r.durationSeconds}
+          title={m.title}
+        />
+      );
     }
-    if (r.status === "failed") return <Notice tone="bad" title="Recording unavailable">{describeError(r.errorCode)}</Notice>;
-    if (r.status === "processing" || r.status === "pending" || m.status === "recording_processing") {
-      return <Notice tone="wait" title="Recording not available yet">The audio is being processed. This page updates automatically.</Notice>;
+    if (r.status === "failed")
+      return (
+        <Notice tone="bad" title="Recording unavailable">
+          {describeError(r.errorCode)}
+        </Notice>
+      );
+    if (
+      r.status === "processing" ||
+      r.status === "pending" ||
+      m.status === "recording_processing"
+    ) {
+      return (
+        <Notice tone="wait" title="Recording not available yet">
+          The audio is being processed. This page updates automatically.
+        </Notice>
+      );
     }
-    if (m.status === "failed") return <Notice tone="bad" title="No recording">{m.failureMessage ?? "Recording failed."}</Notice>;
+    if (m.status === "failed")
+      return (
+        <Notice tone="bad" title="No recording">
+          {m.failureMessage ?? "Recording failed."}
+        </Notice>
+      );
     return <p className="muted small">The recording appears here after the meeting ends.</p>;
   };
   return (
@@ -43,21 +82,42 @@ function LifecycleNotice({ m }: { m: MeetingDetail }) {
   if (m.status === "joining" && m.substatus === "waiting_for_admission") {
     return (
       <Notice tone="wait" title="The bot is waiting to be admitted">
-        Ask the host to admit your Notetaker bot (its name ends in “(recording)”) from the meeting lobby.
+        Ask the host to admit your Notetaker bot (its name ends in “(recording)”) from the meeting
+        lobby.
       </Notice>
     );
   }
   if (m.status === "failed") {
-    return <Notice tone="bad" title="Recording failed">{m.failureMessage ?? "The meeting could not be recorded."}</Notice>;
+    return (
+      <Notice tone="bad" title="Recording failed">
+        {m.failureMessage ?? "The meeting could not be recorded."}
+      </Notice>
+    );
   }
   if (m.status === "unsupported") {
-    return <Notice tone="bad" title="This meeting can't be recorded">{m.failureMessage ?? "The platform or meeting type is not supported."}</Notice>;
+    return (
+      <Notice tone="bad" title="This meeting can't be recorded">
+        {m.failureMessage ?? "The platform or meeting type is not supported."}
+      </Notice>
+    );
   }
   if (m.status === "queued") {
-    return <Notice title="Recording is scheduled">The bot joins shortly before the start time. You can cancel until it joins.</Notice>;
+    return (
+      <Notice title="Recording is scheduled">
+        The bot joins shortly before the start time. You can cancel until it joins.
+      </Notice>
+    );
   }
-  if (m.status === "in_progress") return <Notice tone="live" title="Recording in progress">Notes are created after the meeting ends.</Notice>;
-  if (m.status === "deletion_pending") return <Notice title="Deletion in progress">This meeting and its data are being deleted.</Notice>;
+  if (m.status === "in_progress")
+    return (
+      <Notice tone="live" title="Recording in progress">
+        Notes are created after the meeting ends.
+      </Notice>
+    );
+  if (m.status === "deletion_pending")
+    return (
+      <Notice title="Deletion in progress">This meeting and its data are being deleted.</Notice>
+    );
   return null;
 }
 
@@ -70,11 +130,14 @@ export function MeetingDetailPage() {
   const q = useMeeting(meetingId);
   const actions = useMeetingAction();
   const requested = params.get("tab");
-  const tab: Tab = (TABS as readonly string[]).includes(requested ?? "") ? (requested as Tab) : "summary";
+  const tab: Tab = (TABS as readonly string[]).includes(requested ?? "")
+    ? (requested as Tab)
+    : "summary";
   const loaded = !!q.data;
   useEffect(() => {
     // "Audio / View recording" links land on the player.
-    if (loaded && requested === "recording") document.getElementById("recording")?.scrollIntoView({ block: "start" });
+    if (loaded && requested === "recording")
+      document.getElementById("recording")?.scrollIntoView({ block: "start" });
   }, [loaded, requested]);
 
   if (q.isLoading) return <p className="muted">Loading meeting…</p>;
@@ -91,7 +154,10 @@ export function MeetingDetailPage() {
     return <ErrorNotice error={q.error} onRetry={() => void q.refetch()} />;
   }
   const m = q.data!;
-  const ended = new Date(m.scheduledEndAt ?? new Date(new Date(m.scheduledStartAt).getTime() + 3600_000)).getTime() < Date.now();
+  const ended =
+    new Date(
+      m.scheduledEndAt ?? new Date(new Date(m.scheduledStartAt).getTime() + 3600_000),
+    ).getTime() < Date.now();
   const tz = me.timezone;
   const duration = formatDuration(m.durationSeconds);
 
@@ -102,9 +168,14 @@ export function MeetingDetailPage() {
     );
   const cancel = () =>
     window.confirm("Cancel recording for this meeting?") &&
-    actions.cancel.mutate(m.id, { onSuccess: () => toast("Recording cancelled"), onError: (e) => toast(errorText(e), "bad") });
+    actions.cancel.mutate(m.id, {
+      onSuccess: () => toast("Recording cancelled"),
+      onError: (e) => toast(errorText(e), "bad"),
+    });
   const remove = () =>
-    window.confirm("Delete this meeting, its recording, transcript, summary and minutes? This can't be undone.") &&
+    window.confirm(
+      "Delete this meeting, its recording, transcript, summary and minutes? This can't be undone.",
+    ) &&
     actions.remove.mutate(m.id, {
       onSuccess: () => {
         toast("Meeting deletion started");
@@ -128,17 +199,32 @@ export function MeetingDetailPage() {
         </div>
         <div className="row">
           {m.canRegister && (
-            <button type="button" className="btn btn-primary" onClick={register} disabled={actions.register.isPending}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={register}
+              disabled={actions.register.isPending}
+            >
               Record this meeting
             </button>
           )}
           {m.canCancel && (
-            <button type="button" className="btn" onClick={cancel} disabled={actions.cancel.isPending}>
+            <button
+              type="button"
+              className="btn"
+              onClick={cancel}
+              disabled={actions.cancel.isPending}
+            >
               Cancel recording
             </button>
           )}
           {m.status !== "deletion_pending" && (
-            <button type="button" className="btn btn-danger" onClick={remove} disabled={actions.remove.isPending}>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={remove}
+              disabled={actions.remove.isPending}
+            >
               <Trash2 size={16} aria-hidden="true" />
               Delete meeting
             </button>
@@ -166,7 +252,11 @@ export function MeetingDetailPage() {
               </Tabs.Trigger>
             </Tabs.List>
             <Tabs.Content value="summary">
-              <SummaryTab meetingId={m.id} title={m.title} meetingCompleted={m.status === "completed"} />
+              <SummaryTab
+                meetingId={m.id}
+                title={m.title}
+                meetingCompleted={m.status === "completed"}
+              />
             </Tabs.Content>
             <Tabs.Content value="minutes">
               <MinutesTab meetingId={m.id} meetingCompleted={m.status === "completed"} />
@@ -198,7 +288,11 @@ export function MeetingDetailPage() {
                 </>
               )}
               <dt>Participants</dt>
-              <dd>{m.participants.length ? m.participants.map((p) => p.displayName).join(", ") : "Not available"}</dd>
+              <dd>
+                {m.participants.length
+                  ? m.participants.map((p) => p.displayName).join(", ")
+                  : "Not available"}
+              </dd>
             </dl>
           </section>
           <section className="panel" aria-labelledby="tl-title">

@@ -22,14 +22,18 @@ export class Db {
 
   asUser<T>(userId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
     return this.orm.transaction(async (tx) => {
-      await tx.execute(sql`select set_config('app.user_id', ${userId}, true), set_config('app.system', 'off', true)`);
+      await tx.execute(
+        sql`select set_config('app.user_id', ${userId}, true), set_config('app.system', 'off', true)`,
+      );
       return fn(tx);
     });
   }
 
   asSystem<T>(fn: (tx: Tx) => Promise<T>): Promise<T> {
     return this.orm.transaction(async (tx) => {
-      await tx.execute(sql`select set_config('app.system', 'on', true), set_config('app.user_id', '', true)`);
+      await tx.execute(
+        sql`select set_config('app.system', 'on', true), set_config('app.user_id', '', true)`,
+      );
       return fn(tx);
     });
   }

@@ -94,8 +94,8 @@ export function AudioPlayer({
       </div>
       {error && (
         <p className="small" role="alert" style={{ color: "var(--bad)", marginTop: "0.5rem" }}>
-          The recording couldn't be played. Your session may have expired, or the file is unavailable. Reload the page and try
-          again, or download the file instead.
+          The recording couldn't be played. Your session may have expired, or the file is
+          unavailable. Reload the page and try again, or download the file instead.
         </p>
       )}
     </div>

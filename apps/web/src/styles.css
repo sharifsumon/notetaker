@@ -747,7 +747,9 @@ fieldset {
   border-radius: var(--radius-sheet);
   padding: clamp(1.25rem, 4vw, 3rem) clamp(1.25rem, 5vw, 3.5rem);
   max-width: 46rem;
-  box-shadow: 0 1px 0 var(--rule), 0 12px 24px -18px color-mix(in srgb, var(--ink) 40%, transparent);
+  box-shadow:
+    0 1px 0 var(--rule),
+    0 12px 24px -18px color-mix(in srgb, var(--ink) 40%, transparent);
   position: relative;
 }
 .sheet::before {

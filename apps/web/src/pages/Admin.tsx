@@ -4,10 +4,23 @@ import { Navigate, useOutletContext } from "react-router";
 import { ErrorNotice, errorText, useToast } from "../components/ui";
 import { useAdminJobs, useAdminOverview, useRetryJob } from "../lib/queries";
 
-type Health = { ok?: boolean; name?: string; model?: string; mock?: boolean; detail?: string } | null;
+type Health = {
+  ok?: boolean;
+  name?: string;
+  model?: string;
+  mock?: boolean;
+  detail?: string;
+} | null;
 
 function HealthRow({ label, h }: { label: string; h: Health }) {
-  const state = h === null ? "Not configured" : h.ok === false ? "Unhealthy" : h.ok === true ? "Healthy" : "Configured";
+  const state =
+    h === null
+      ? "Not configured"
+      : h.ok === false
+        ? "Unhealthy"
+        : h.ok === true
+          ? "Healthy"
+          : "Configured";
   const tone = h === null ? "idle" : h.ok === false ? "bad" : "ok";
   return (
     <tr>
@@ -141,7 +154,12 @@ export function AdminPage() {
                         <button
                           type="button"
                           className="btn btn-sm"
-                          onClick={() => retry.mutate(j.id, { onSuccess: () => toast("Job queued for retry"), onError: (e) => toast(errorText(e), "bad") })}
+                          onClick={() =>
+                            retry.mutate(j.id, {
+                              onSuccess: () => toast("Job queued for retry"),
+                              onError: (e) => toast(errorText(e), "bad"),
+                            })
+                          }
                         >
                           Retry
                         </button>

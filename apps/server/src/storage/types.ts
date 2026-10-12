@@ -16,7 +16,10 @@ export interface StorageAdapter {
   putFile(key: string, filePath: string, contentType: string): Promise<{ sizeBytes: number }>;
   stat(key: string): Promise<{ sizeBytes: number } | null>;
   openRead(key: string, range?: ByteRange): Promise<Readable>;
-  signedUrl(key: string, opts: { expiresInSeconds: number; contentType: string; downloadFilename?: string }): Promise<string>;
+  signedUrl(
+    key: string,
+    opts: { expiresInSeconds: number; contentType: string; downloadFilename?: string },
+  ): Promise<string>;
   delete(key: string): Promise<void>;
   healthCheck(): Promise<void>;
 }
@@ -30,6 +33,11 @@ export function assertSafeKey(key: string): void {
   }
 }
 
-export function recordingKey(userId: string, meetingId: string, objectId: string, ext: string): string {
+export function recordingKey(
+  userId: string,
+  meetingId: string,
+  objectId: string,
+  ext: string,
+): string {
   return `recordings/${userId}/${meetingId}/${objectId}.${ext}`;
 }

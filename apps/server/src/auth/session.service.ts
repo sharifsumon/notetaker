@@ -21,7 +21,10 @@ export class SessionService {
     private readonly idleHours: number,
   ) {}
 
-  async create(userId: string, userAgent: string | undefined): Promise<{ token: string; csrfToken: string; expiresAt: Date }> {
+  async create(
+    userId: string,
+    userAgent: string | undefined,
+  ): Promise<{ token: string; csrfToken: string; expiresAt: Date }> {
     const token = randomToken(32);
     const csrfToken = randomToken(24);
     const expiresAt = new Date(Date.now() + this.ttlHours * 3_600_000);
@@ -66,12 +69,17 @@ export class SessionService {
   }
 
   async revoke(sessionId: string): Promise<void> {
-    await this.db.asSystem((tx) => tx.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, sessionId)));
+    await this.db.asSystem((tx) =>
+      tx.update(sessions).set({ revokedAt: new Date() }).where(eq(sessions.id, sessionId)),
+    );
   }
 
   async revokeAllForUser(userId: string): Promise<void> {
     await this.db.asSystem((tx) =>
-      tx.update(sessions).set({ revokedAt: new Date() }).where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt))),
+      tx
+        .update(sessions)
+        .set({ revokedAt: new Date() })
+        .where(and(eq(sessions.userId, userId), isNull(sessions.revokedAt))),
     );
   }
 }

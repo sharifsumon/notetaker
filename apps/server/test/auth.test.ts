@@ -40,8 +40,16 @@ describe("authentication & sessions", () => {
     const u = await login(ctx.app, "bob@example.com");
     const r1 = await u.agent.patch("/api/v1/me/settings").send({ timezone: "UTC" }).expect(403);
     expect(r1.body.error.code).toBe("csrf_failed");
-    await u.agent.patch("/api/v1/me/settings").set("x-csrf-token", "wrong").send({ timezone: "UTC" }).expect(403);
-    await u.agent.patch("/api/v1/me/settings").set("x-csrf-token", u.csrf).send({ timezone: "UTC" }).expect(200);
+    await u.agent
+      .patch("/api/v1/me/settings")
+      .set("x-csrf-token", "wrong")
+      .send({ timezone: "UTC" })
+      .expect(403);
+    await u.agent
+      .patch("/api/v1/me/settings")
+      .set("x-csrf-token", u.csrf)
+      .send({ timezone: "UTC" })
+      .expect(200);
   });
 
   it("rejects cross-origin state-changing requests", async () => {
@@ -63,14 +71,26 @@ describe("authentication & sessions", () => {
 
   it("validates settings input", async () => {
     const u = await login(ctx.app, "tz@example.com");
-    const r = await u.agent.patch("/api/v1/me/settings").set("x-csrf-token", u.csrf).send({ timezone: "Mars/Olympus" }).expect(400);
+    const r = await u.agent
+      .patch("/api/v1/me/settings")
+      .set("x-csrf-token", u.csrf)
+      .send({ timezone: "Mars/Olympus" })
+      .expect(400);
     expect(r.body.error.code).toBe("validation_error");
-    await u.agent.patch("/api/v1/me/settings").set("x-csrf-token", u.csrf).send({ role: "admin" }).expect(400);
+    await u.agent
+      .patch("/api/v1/me/settings")
+      .set("x-csrf-token", u.csrf)
+      .send({ role: "admin" })
+      .expect(400);
   });
 
   it("requires acknowledging the recording notice before enabling auto-recording", async () => {
     const u = await login(ctx.app, "auto@example.com", { acknowledge: false });
-    const r = await u.agent.patch("/api/v1/me/settings").set("x-csrf-token", u.csrf).send({ autoRegister: true }).expect(409);
+    const r = await u.agent
+      .patch("/api/v1/me/settings")
+      .set("x-csrf-token", u.csrf)
+      .send({ autoRegister: true })
+      .expect(409);
     expect(r.body.error.code).toBe("recording_notice_required");
     const ok = await u.agent
       .patch("/api/v1/me/settings")
@@ -93,6 +113,9 @@ describe("dev login is disabled unless explicitly enabled", () => {
   const off = createTestContext({ AUTH_DEV_LOGIN_ENABLED: "false" });
   afterAll(() => off.close());
   it("returns 404", async () => {
-    await supertest(off.app).post("/api/v1/auth/dev-login").send({ email: "x@example.com", displayName: "X" }).expect(404);
+    await supertest(off.app)
+      .post("/api/v1/auth/dev-login")
+      .send({ email: "x@example.com", displayName: "X" })
+      .expect(404);
   });
 });

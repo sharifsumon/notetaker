@@ -36,7 +36,8 @@ export class AnthropicLlmProvider implements LlmProvider {
     } catch (err) {
       if (err instanceof Anthropic.APIError) {
         const status = err.status ?? 0;
-        const retryable = status === 0 || status === 408 || status === 409 || status === 429 || status >= 500;
+        const retryable =
+          status === 0 || status === 408 || status === 409 || status === 429 || status >= 500;
         throw new ProviderError("generation_failed", `LLM HTTP ${status}`, retryable, status);
       }
       throw new ProviderError("generation_failed", "LLM request failed", true);
@@ -46,7 +47,11 @@ export class AnthropicLlmProvider implements LlmProvider {
       throw new ProviderError("generation_failed", "LLM refused the request", false);
     }
     if (response.stop_reason === "max_tokens") {
-      throw new ProviderError("generation_invalid_output", "LLM output truncated (max_tokens)", false);
+      throw new ProviderError(
+        "generation_invalid_output",
+        "LLM output truncated (max_tokens)",
+        false,
+      );
     }
     const textBlock = response.content.find((b) => b.type === "text");
     if (!textBlock || textBlock.type !== "text") {
@@ -60,11 +65,18 @@ export class AnthropicLlmProvider implements LlmProvider {
     }
     const parsed = req.schema.safeParse(json);
     if (!parsed.success) {
-      throw new ProviderError("generation_invalid_output", "LLM output failed schema validation", true);
+      throw new ProviderError(
+        "generation_invalid_output",
+        "LLM output failed schema validation",
+        true,
+      );
     }
     return {
       data: parsed.data,
-      usage: { inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens },
+      usage: {
+        inputTokens: response.usage.input_tokens,
+        outputTokens: response.usage.output_tokens,
+      },
     };
   }
 }

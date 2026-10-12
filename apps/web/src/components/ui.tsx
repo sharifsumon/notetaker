@@ -31,14 +31,29 @@ const STATUS_TONE: Record<MeetingStatus, { tone: Tone; Icon: typeof Clock }> = {
 };
 
 /** Status label for display. Past, never-registered meetings read as "Not recorded". */
-export function statusLabel(status: MeetingStatus, opts: { ended?: boolean; substatus?: string | null } = {}): string {
+export function statusLabel(
+  status: MeetingStatus,
+  opts: { ended?: boolean; substatus?: string | null } = {},
+): string {
   if (status === "scheduled" && opts.ended) return "Not recorded";
-  if (status === "joining" && opts.substatus === "waiting_for_admission") return "Waiting for admission";
+  if (status === "joining" && opts.substatus === "waiting_for_admission")
+    return "Waiting for admission";
   return MEETING_STATUS_LABELS[status];
 }
 
-export function StatusBadge({ status, ended, substatus }: { status: MeetingStatus; ended?: boolean; substatus?: string | null }) {
-  const { tone, Icon } = status === "scheduled" && ended ? { tone: "idle" as Tone, Icon: CircleDashed } : STATUS_TONE[status];
+export function StatusBadge({
+  status,
+  ended,
+  substatus,
+}: {
+  status: MeetingStatus;
+  ended?: boolean;
+  substatus?: string | null;
+}) {
+  const { tone, Icon } =
+    status === "scheduled" && ended
+      ? { tone: "idle" as Tone, Icon: CircleDashed }
+      : STATUS_TONE[status];
   return (
     <span className={`status tone-${tone}`}>
       <Icon size={14} aria-hidden="true" />
@@ -58,7 +73,8 @@ export function Notice({
   children?: ReactNode;
   actions?: ReactNode;
 }) {
-  const Icon = tone === "bad" ? XCircle : tone === "wait" ? Loader2 : tone === "ok" ? CheckCircle2 : Info;
+  const Icon =
+    tone === "bad" ? XCircle : tone === "wait" ? Loader2 : tone === "ok" ? CheckCircle2 : Info;
   return (
     <div className={`notice tone-${tone}`} role={tone === "bad" ? "alert" : "status"}>
       <Icon size={18} aria-hidden="true" />
@@ -72,11 +88,22 @@ export function Notice({
 }
 
 export function errorText(err: unknown): string {
-  if (err instanceof ApiError) return describeError(err.code) !== describeError("internal_error") ? (describeError(err.code) ?? err.message) : err.message;
+  if (err instanceof ApiError)
+    return describeError(err.code) !== describeError("internal_error")
+      ? (describeError(err.code) ?? err.message)
+      : err.message;
   return "Something went wrong. Try again.";
 }
 
-export function ErrorNotice({ error, onRetry, title = "This couldn't be loaded" }: { error: unknown; onRetry?: () => void; title?: string }) {
+export function ErrorNotice({
+  error,
+  onRetry,
+  title = "This couldn't be loaded",
+}: {
+  error: unknown;
+  onRetry?: () => void;
+  title?: string;
+}) {
   const msg = error instanceof ApiError ? error.message : "Something went wrong.";
   const ref = error instanceof ApiError && error.requestId ? ` Reference: ${error.requestId}` : "";
   return (
@@ -99,7 +126,15 @@ export function ErrorNotice({ error, onRetry, title = "This couldn't be loaded" 
   );
 }
 
-export function EmptyState({ title, children, action }: { title: string; children?: ReactNode; action?: ReactNode }) {
+export function EmptyState({
+  title,
+  children,
+  action,
+}: {
+  title: string;
+  children?: ReactNode;
+  action?: ReactNode;
+}) {
   return (
     <div className="empty">
       <h3>{title}</h3>
@@ -130,8 +165,16 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <div className="toast-region" aria-live="polite" aria-atomic="false">
         {items.map((t) => (
-          <div key={t.id} className={`toast ${t.tone === "bad" ? "tone-bad" : ""}`} role={t.tone === "bad" ? "alert" : "status"}>
-            {t.tone === "bad" ? <XCircle size={18} aria-hidden="true" /> : <CheckCircle2 size={18} aria-hidden="true" />}
+          <div
+            key={t.id}
+            className={`toast ${t.tone === "bad" ? "tone-bad" : ""}`}
+            role={t.tone === "bad" ? "alert" : "status"}
+          >
+            {t.tone === "bad" ? (
+              <XCircle size={18} aria-hidden="true" />
+            ) : (
+              <CheckCircle2 size={18} aria-hidden="true" />
+            )}
             <span>{t.text}</span>
           </div>
         ))}

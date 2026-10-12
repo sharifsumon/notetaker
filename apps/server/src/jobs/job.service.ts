@@ -55,7 +55,10 @@ export class JobService {
       .onConflictDoNothing({ target: jobs.idempotencyKey })
       .returning();
     if (inserted[0]) return { job: inserted[0], created: true };
-    const [existing] = await tx.select().from(jobs).where(eq(jobs.idempotencyKey, input.idempotencyKey));
+    const [existing] = await tx
+      .select()
+      .from(jobs)
+      .where(eq(jobs.idempotencyKey, input.idempotencyKey));
     if (!existing) throw new Error("job enqueue race: row vanished");
     return { job: existing, created: false };
   }
@@ -75,7 +78,13 @@ export class JobService {
     const r = await tx
       .update(jobs)
       .set({ status: "cancelled", updatedAt: new Date(), completedAt: new Date() })
-      .where(and(eq(jobs.type, type), eq(jobs.entityId, entityId), inArray(jobs.status, ["pending", "queued"])))
+      .where(
+        and(
+          eq(jobs.type, type),
+          eq(jobs.entityId, entityId),
+          inArray(jobs.status, ["pending", "queued"]),
+        ),
+      )
       .returning({ id: jobs.id });
     return r.length;
   }
@@ -93,10 +102,12 @@ export class JobService {
     await tx
       .update(jobs)
       .set({ status: "queued", updatedAt: now })
-      .where(inArray(
-        jobs.id,
-        due.map((j) => j.id),
-      ));
+      .where(
+        inArray(
+          jobs.id,
+          due.map((j) => j.id),
+        ),
+      );
     return due;
   }
 
@@ -113,7 +124,13 @@ export class JobService {
   async succeed(tx: Tx, jobId: string): Promise<void> {
     await tx
       .update(jobs)
-      .set({ status: "succeeded", updatedAt: new Date(), completedAt: new Date(), lastErrorCode: null, lastErrorMessage: null })
+      .set({
+        status: "succeeded",
+        updatedAt: new Date(),
+        completedAt: new Date(),
+        lastErrorCode: null,
+        lastErrorMessage: null,
+      })
       .where(eq(jobs.id, jobId));
   }
 

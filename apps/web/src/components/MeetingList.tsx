@@ -5,11 +5,18 @@ import { formatDay, formatDuration, formatTime, tzAbbrev } from "../lib/format";
 import { StatusBadge } from "./ui";
 
 function hasEnded(m: MeetingRow): boolean {
-  const end = m.scheduledEndAt ? new Date(m.scheduledEndAt) : new Date(new Date(m.scheduledStartAt).getTime() + 3600_000);
+  const end = m.scheduledEndAt
+    ? new Date(m.scheduledEndAt)
+    : new Date(new Date(m.scheduledStartAt).getTime() + 3600_000);
   return end.getTime() < Date.now();
 }
 
-const AVAIL_TEXT = { ready: "", processing: " (processing)", failed: " (failed)", none: " (not available yet)" } as const;
+const AVAIL_TEXT = {
+  ready: "",
+  processing: " (processing)",
+  failed: " (failed)",
+  none: " (not available yet)",
+} as const;
 
 function ArtifactLink({
   to,
@@ -76,14 +83,18 @@ export function MeetingList({ items, timezone }: { items: MeetingRow[]; timezone
               />
               <ArtifactLink
                 to={`/meetings/${m.id}?tab=summary`}
-                avail={m.summary !== "none" ? m.summary : m.transcript === "none" ? "none" : m.transcript}
+                avail={
+                  m.summary !== "none" ? m.summary : m.transcript === "none" ? "none" : m.transcript
+                }
                 icon={<FileText size={15} aria-hidden="true" />}
                 label="Summary"
                 meetingTitle={m.title}
               />
               <ArtifactLink
                 to={`/meetings/${m.id}?tab=minutes`}
-                avail={m.minutes !== "none" ? m.minutes : m.transcript === "none" ? "none" : m.transcript}
+                avail={
+                  m.minutes !== "none" ? m.minutes : m.transcript === "none" ? "none" : m.transcript
+                }
                 icon={<ListChecks size={15} aria-hidden="true" />}
                 label="Meeting Minutes"
                 meetingTitle={m.title}

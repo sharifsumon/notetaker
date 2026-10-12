@@ -90,13 +90,20 @@ export class MockMeetingBotProvider implements MeetingBotProvider {
     const scenario = (MOCK_SCENARIOS as readonly string[]).includes(input.mockScenario ?? "")
       ? (input.mockScenario as MockScenario)
       : "success";
-    const sessionId = encodeSession({ m: input.meetingId, j: input.joinAt.getTime(), c: Date.now(), s: scenario });
+    const sessionId = encodeSession({
+      m: input.meetingId,
+      j: input.joinAt.getTime(),
+      c: Date.now(),
+      s: scenario,
+    });
     if (this.opts.emitWebhooks) this.scheduleWebhooks(sessionId, input.webhookUrl);
     return { sessionId };
   }
 
   /** Timeline offsets (ms after join) per scenario. */
-  private timeline(scenario: MockScenario): Array<{ at: number; type: ProviderEventType; errorCode?: string }> {
+  private timeline(
+    scenario: MockScenario,
+  ): Array<{ at: number; type: ProviderEventType; errorCode?: string }> {
     const s = this.opts.stepMs;
     switch (scenario) {
       case "admission-timeout":
@@ -148,7 +155,10 @@ export class MockMeetingBotProvider implements MeetingBotProvider {
               session_id: sessionId,
               occurred_at: new Date().toISOString(),
               error_code: step.errorCode ?? null,
-              participant: step.type === "bot.participant_joined" ? { id: "p1", name: "Test Participant" } : null,
+              participant:
+                step.type === "bot.participant_joined"
+                  ? { id: "p1", name: "Test Participant" }
+                  : null,
             });
           }
         }, delay),
@@ -168,12 +178,20 @@ export class MockMeetingBotProvider implements MeetingBotProvider {
     };
   }
 
-  private async deliver(url: string, eventId: string, payload: Record<string, unknown>): Promise<void> {
+  private async deliver(
+    url: string,
+    eventId: string,
+    payload: Record<string, unknown>,
+  ): Promise<void> {
     const body = JSON.stringify(payload);
     const headers = this.sign(eventId, body, Math.floor(Date.now() / 1000));
     try {
       const res = await (this.opts.fetchImpl ?? fetch)(url, { method: "POST", headers, body });
-      if (!res.ok) this.opts.logger.warn({ status: res.status, eventType: payload.type }, "mock webhook rejected");
+      if (!res.ok)
+        this.opts.logger.warn(
+          { status: res.status, eventType: payload.type },
+          "mock webhook rejected",
+        );
     } catch (err) {
       this.opts.logger.warn({ err: (err as Error).message }, "mock webhook delivery failed");
     }
@@ -259,7 +277,11 @@ export class MockMeetingBotProvider implements MeetingBotProvider {
     return this.fixturePromise;
   }
 
-  verifyAndParseWebhook(rawBody: Buffer, headers: Record<string, string | undefined>, now: Date): ProviderEvent[] {
+  verifyAndParseWebhook(
+    rawBody: Buffer,
+    headers: Record<string, string | undefined>,
+    now: Date,
+  ): ProviderEvent[] {
     const eventId = headers["x-mock-event-id"];
     const ts = headers["x-mock-timestamp"];
     const sig = headers["x-mock-signature"];
@@ -290,7 +312,8 @@ export class MockMeetingBotProvider implements MeetingBotProvider {
       "bot.failed",
       "bot.participant_joined",
     ];
-    if (!allowed.includes(type as ProviderEventType)) throw new WebhookVerificationError("malformed");
+    if (!allowed.includes(type as ProviderEventType))
+      throw new WebhookVerificationError("malformed");
     const occurred = typeof body.occurred_at === "string" ? new Date(body.occurred_at) : now;
     const participant = body.participant as { id?: unknown; name?: unknown } | null | undefined;
     return [

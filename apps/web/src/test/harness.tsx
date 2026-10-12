@@ -1,4 +1,12 @@
-import { MinutesContentSchema, renderMinutesText, type Me, type MeetingDetail, type MeetingRow, type MinutesArtifact, type SummaryArtifact } from "@notetaker/shared";
+import {
+  MinutesContentSchema,
+  renderMinutesText,
+  type Me,
+  type MeetingDetail,
+  type MeetingRow,
+  type MinutesArtifact,
+  type SummaryArtifact,
+} from "@notetaker/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
@@ -6,7 +14,6 @@ import { setupServer } from "msw/node";
 import { createMemoryRouter, RouterProvider } from "react-router";
 import { routes } from "../App";
 import { ToastProvider } from "../components/ui";
-
 
 export const me: Me = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -52,8 +59,20 @@ export function detail(over: Partial<MeetingDetail> = {}): MeetingDetail {
     substatus: null,
     participants: [{ displayName: "Priya", source: "provider" }],
     statusHistory: [
-      { from: null, to: "scheduled", source: "calendar", reasonCode: null, occurredAt: "2026-10-10T00:00:00Z" },
-      { from: "recording_processing", to: "completed", source: "ingestion", reasonCode: null, occurredAt: "2026-10-12T10:00:00Z" },
+      {
+        from: null,
+        to: "scheduled",
+        source: "calendar",
+        reasonCode: null,
+        occurredAt: "2026-10-10T00:00:00Z",
+      },
+      {
+        from: "recording_processing",
+        to: "completed",
+        source: "ingestion",
+        reasonCode: null,
+        occurredAt: "2026-10-12T10:00:00Z",
+      },
     ],
     fromCalendar: true,
     ...over,
@@ -75,8 +94,20 @@ export const minutesContent = MinutesContentSchema.parse({
   decisions: [{ decision: "Launch behind a feature flag", evidence: null }],
   proposals: [{ proposal: "Move standup to 10am", evidence: null }],
   actionItems: [
-    { task: "Finish accessibility review", owner: "Priya", dueDate: "Friday", status: "open", evidence: null },
-    { task: "Follow up with legal", owner: null, dueDate: null, status: "not_specified", evidence: null },
+    {
+      task: "Finish accessibility review",
+      owner: "Priya",
+      dueDate: "Friday",
+      status: "open",
+      evidence: null,
+    },
+    {
+      task: "Follow up with legal",
+      owner: null,
+      dueDate: null,
+      status: "not_specified",
+      evidence: null,
+    },
   ],
   risks: ["Legal review pending"],
   openQuestions: [],
@@ -133,13 +164,31 @@ export function summaryArtifact(over: Partial<SummaryArtifact> = {}): SummaryArt
 export function baseHandlers() {
   return [
     http.get("/api/v1/me", () => HttpResponse.json(me)),
-    http.get("/api/v1/auth/config", () => HttpResponse.json({ googleAuth: true, microsoftAuth: true, devLogin: false })),
-    http.get("/api/v1/calendar-connections", () => HttpResponse.json({ items: [], available: ["google_calendar", "microsoft_calendar"] })),
+    http.get("/api/v1/auth/config", () =>
+      HttpResponse.json({ googleAuth: true, microsoftAuth: true, devLogin: false }),
+    ),
+    http.get("/api/v1/calendar-connections", () =>
+      HttpResponse.json({ items: [], available: ["google_calendar", "microsoft_calendar"] }),
+    ),
     http.get("/api/v1/meetings", () =>
-      HttpResponse.json({ items: [], page: 1, pageSize: 20, total: 0, stats: { total: 0, completed: 0, processing: 0, failed: 0 } }),
+      HttpResponse.json({
+        items: [],
+        page: 1,
+        pageSize: 20,
+        total: 0,
+        stats: { total: 0, completed: 0, processing: 0, failed: 0 },
+      }),
     ),
     http.get("/api/v1/meetings/:id/recording", () =>
-      HttpResponse.json({ status: "ready", mimeType: "audio/mp4", durationSeconds: 3300, fileSizeBytes: 100, streamUrl: "/s", downloadUrl: "/d", errorCode: null }),
+      HttpResponse.json({
+        status: "ready",
+        mimeType: "audio/mp4",
+        durationSeconds: 3300,
+        fileSizeBytes: 100,
+        streamUrl: "/s",
+        downloadUrl: "/d",
+        errorCode: null,
+      }),
     ),
   ];
 }

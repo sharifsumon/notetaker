@@ -24,7 +24,8 @@ function Disclaimer({ isMock }: { isMock: boolean }) {
       <AlertTriangle size={15} aria-hidden="true" />
       <span>
         AI-generated notes may contain errors. Review them before sharing.
-        {isMock && " These notes were produced by a development mock provider, not a real AI model."}
+        {isMock &&
+          " These notes were produced by a development mock provider, not a real AI model."}
       </span>
     </p>
   );
@@ -100,7 +101,10 @@ function ArtifactState({
     if (a.errorCode === "transcript_unavailable") {
       return (
         <Notice tone="bad" title={`A reliable ${kind.toLowerCase()} can't be generated`}>
-          <p>There is no usable transcript for this meeting, so no notes were created. Nothing has been made up.</p>
+          <p>
+            There is no usable transcript for this meeting, so no notes were created. Nothing has
+            been made up.
+          </p>
         </Notice>
       );
     }
@@ -109,7 +113,12 @@ function ArtifactState({
         <Notice
           title={`No ${kind.toLowerCase()} yet`}
           actions={
-            <button type="button" className="btn btn-primary btn-sm" onClick={onGenerate} disabled={generating}>
+            <button
+              type="button"
+              className="btn btn-primary btn-sm"
+              onClick={onGenerate}
+              disabled={generating}
+            >
               <Sparkles size={15} aria-hidden="true" />
               Generate {kind.toLowerCase()}
             </button>
@@ -138,7 +147,9 @@ export function SummaryDocument({ s, title }: { s: SummaryContent; title: string
     return (
       <article className="sheet">
         <h2>{title}</h2>
-        <p className="none">{s.note ?? "A reliable summary could not be generated for this meeting."}</p>
+        <p className="none">
+          {s.note ?? "A reliable summary could not be generated for this meeting."}
+        </p>
       </article>
     );
   }
@@ -165,28 +176,49 @@ export function SummaryDocument({ s, title }: { s: SummaryContent; title: string
   );
 }
 
-export function SummaryTab({ meetingId, title, meetingCompleted }: { meetingId: string; title: string; meetingCompleted: boolean }) {
+export function SummaryTab({
+  meetingId,
+  title,
+  meetingCompleted,
+}: {
+  meetingId: string;
+  title: string;
+  meetingCompleted: boolean;
+}) {
   const q = useSummary(meetingId, true);
   const gen = useGenerate(meetingId, "summary");
   const toast = useToast();
   if (q.isLoading) return <p className="muted">Loading summary…</p>;
   if (q.isError) return <ErrorNotice error={q.error} onRetry={() => void q.refetch()} />;
   const a = q.data!;
-  const run = (regenerate: boolean) => gen.mutate(regenerate, { onError: (e) => toast(errorText(e), "bad") });
+  const run = (regenerate: boolean) =>
+    gen.mutate(regenerate, { onError: (e) => toast(errorText(e), "bad") });
   return (
     <div className="stack">
-      <ArtifactState a={a} kind="Summary" onGenerate={() => run(false)} generating={gen.isPending} meetingCompleted={meetingCompleted} />
+      <ArtifactState
+        a={a}
+        kind="Summary"
+        onGenerate={() => run(false)}
+        generating={gen.isPending}
+        meetingCompleted={meetingCompleted}
+      />
       {a.content && (
         <>
           <div className="tab-toolbar">
             <GeneratedMeta a={a} />
             <div className="actions">
-              {(a.status === "pending" || a.status === "processing") && <span className="status tone-wait">Regenerating…</span>}
+              {(a.status === "pending" || a.status === "processing") && (
+                <span className="status tone-wait">Regenerating…</span>
+              )}
               {a.canGenerate && (
                 <button
                   type="button"
                   className="btn btn-sm"
-                  onClick={() => window.confirm("Generate a new version of the summary? The current version stays until the new one is ready.") && run(true)}
+                  onClick={() =>
+                    window.confirm(
+                      "Generate a new version of the summary? The current version stays until the new one is ready.",
+                    ) && run(true)
+                  }
                   disabled={gen.isPending}
                 >
                   <RefreshCw size={15} aria-hidden="true" />
@@ -195,7 +227,11 @@ export function SummaryTab({ meetingId, title, meetingCompleted }: { meetingId: 
               )}
             </div>
           </div>
-          {a.status === "failed" && <Notice tone="bad">The latest regeneration failed; showing the previous version.</Notice>}
+          {a.status === "failed" && (
+            <Notice tone="bad">
+              The latest regeneration failed; showing the previous version.
+            </Notice>
+          )}
           <SummaryDocument s={a.content} title={title} />
           <Disclaimer isMock={a.isMock} />
         </>
@@ -205,7 +241,11 @@ export function SummaryTab({ meetingId, title, meetingCompleted }: { meetingId: 
 }
 
 // ---------------------------------------------------------------- minutes
-const ACTION_STATUS = { open: "Open", completed: "Completed", not_specified: NOT_SPECIFIED } as const;
+const ACTION_STATUS = {
+  open: "Open",
+  completed: "Completed",
+  not_specified: NOT_SPECIFIED,
+} as const;
 
 export function MinutesDocument({ m }: { m: MinutesContent }) {
   const d = m.meetingDetails;
@@ -213,19 +253,24 @@ export function MinutesDocument({ m }: { m: MinutesContent }) {
     <article className="sheet" aria-label={`Minutes of ${d.title}`}>
       <h2>Minutes: {d.title}</h2>
       <p className="sub">
-        {formatDateTime(d.startAt, d.timezone)}, {PLATFORM_LABELS[d.platform as Platform] ?? d.platform}
+        {formatDateTime(d.startAt, d.timezone)},{" "}
+        {PLATFORM_LABELS[d.platform as Platform] ?? d.platform}
       </p>
       <h3>Participants</h3>
       {d.participants.length ? (
         <p>
           {d.participants.join(", ")}
-          {d.participantsSource === "calendar" && <span className="sub"> (from the calendar invitation; attendance not confirmed)</span>}
+          {d.participantsSource === "calendar" && (
+            <span className="sub"> (from the calendar invitation; attendance not confirmed)</span>
+          )}
         </p>
       ) : (
         <p className="unknown">{NOT_SPECIFIED}</p>
       )}
       {m.insufficientSource ? (
-        <p className="none">{m.note ?? "The transcript was insufficient to produce reliable minutes."}</p>
+        <p className="none">
+          {m.note ?? "The transcript was insufficient to produce reliable minutes."}
+        </p>
       ) : (
         <>
           <h3>Objective</h3>
@@ -271,7 +316,13 @@ export function MinutesDocument({ m }: { m: MinutesContent }) {
                       <td>
                         <Unknown value={a.dueDate} />
                       </td>
-                      <td>{a.status === "not_specified" ? <span className="unknown">{NOT_SPECIFIED}</span> : ACTION_STATUS[a.status]}</td>
+                      <td>
+                        {a.status === "not_specified" ? (
+                          <span className="unknown">{NOT_SPECIFIED}</span>
+                        ) : (
+                          ACTION_STATUS[a.status]
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -295,7 +346,13 @@ export function MinutesDocument({ m }: { m: MinutesContent }) {
   );
 }
 
-export function MinutesTab({ meetingId, meetingCompleted }: { meetingId: string; meetingCompleted: boolean }) {
+export function MinutesTab({
+  meetingId,
+  meetingCompleted,
+}: {
+  meetingId: string;
+  meetingCompleted: boolean;
+}) {
   const q = useMinutes(meetingId, true);
   const gen = useGenerate(meetingId, "minutes");
   const toast = useToast();
@@ -323,7 +380,8 @@ export function MinutesTab({ meetingId, meetingCompleted }: { meetingId: string;
   if (q.isLoading) return <p className="muted">Loading minutes…</p>;
   if (q.isError) return <ErrorNotice error={q.error} onRetry={() => void q.refetch()} />;
   const art = a!;
-  const run = (regenerate: boolean) => gen.mutate(regenerate, { onError: (e) => toast(errorText(e), "bad") });
+  const run = (regenerate: boolean) =>
+    gen.mutate(regenerate, { onError: (e) => toast(errorText(e), "bad") });
 
   const copy = async () => {
     if (!art.renderedText) return;
@@ -339,18 +397,31 @@ export function MinutesTab({ meetingId, meetingCompleted }: { meetingId: string;
 
   return (
     <div className="stack">
-      <ArtifactState a={art} kind="Minutes" onGenerate={() => run(false)} generating={gen.isPending} meetingCompleted={meetingCompleted} />
+      <ArtifactState
+        a={art}
+        kind="Minutes"
+        onGenerate={() => run(false)}
+        generating={gen.isPending}
+        meetingCompleted={meetingCompleted}
+      />
       {art.content && art.renderedText && (
         <>
           <div className="tab-toolbar">
             <GeneratedMeta a={art} />
             <div className="actions">
-              {(art.status === "pending" || art.status === "processing") && <span className="status tone-wait">Regenerating…</span>}
+              {(art.status === "pending" || art.status === "processing") && (
+                <span className="status tone-wait">Regenerating…</span>
+              )}
               <button type="button" className="btn btn-primary" onClick={() => void copy()}>
                 <Copy size={16} aria-hidden="true" />
                 Copy minutes
               </button>
-              <button type="button" className="btn" aria-pressed={plain} onClick={() => setPlain((p) => !p)}>
+              <button
+                type="button"
+                className="btn"
+                aria-pressed={plain}
+                onClick={() => setPlain((p) => !p)}
+              >
                 <FileText size={16} aria-hidden="true" />
                 {plain ? "Formatted view" : "Plain text"}
               </button>
@@ -358,7 +429,11 @@ export function MinutesTab({ meetingId, meetingCompleted }: { meetingId: string;
                 <button
                   type="button"
                   className="btn"
-                  onClick={() => window.confirm("Generate a new version of the minutes? The current version stays until the new one is ready.") && run(true)}
+                  onClick={() =>
+                    window.confirm(
+                      "Generate a new version of the minutes? The current version stays until the new one is ready.",
+                    ) && run(true)
+                  }
                   disabled={gen.isPending}
                 >
                   <RefreshCw size={16} aria-hidden="true" />
@@ -369,14 +444,30 @@ export function MinutesTab({ meetingId, meetingCompleted }: { meetingId: string;
           </div>
           {copyFailed && (
             <Notice tone="bad" title="Your browser blocked clipboard access">
-              <p>The minutes are selected in the box below. Press Ctrl+C (or ⌘C on a Mac) to copy them.</p>
+              <p>
+                The minutes are selected in the box below. Press Ctrl+C (or ⌘C on a Mac) to copy
+                them.
+              </p>
             </Notice>
           )}
-          {art.status === "failed" && <Notice tone="bad">The latest regeneration failed; showing the previous version.</Notice>}
+          {art.status === "failed" && (
+            <Notice tone="bad">
+              The latest regeneration failed; showing the previous version.
+            </Notice>
+          )}
           {plain ? (
             <div className="field">
-              <label htmlFor="minutes-plain">Minutes as plain text (exactly what Copy minutes copies)</label>
-              <textarea id="minutes-plain" ref={textRef} className="plain-text" readOnly value={art.renderedText} rows={24} />
+              <label htmlFor="minutes-plain">
+                Minutes as plain text (exactly what Copy minutes copies)
+              </label>
+              <textarea
+                id="minutes-plain"
+                ref={textRef}
+                className="plain-text"
+                readOnly
+                value={art.renderedText}
+                rows={24}
+              />
             </div>
           ) : (
             <MinutesDocument m={art.content} />
@@ -395,12 +486,25 @@ export function TranscriptTab({ meetingId }: { meetingId: string }) {
   if (q.isError) return <ErrorNotice error={q.error} onRetry={() => void q.refetch()} />;
   const t: Transcript = q.data!;
   if (t.status === "pending" || t.status === "processing") {
-    return <Notice tone="wait" title="Transcription in progress">The page updates automatically.</Notice>;
+    return (
+      <Notice tone="wait" title="Transcription in progress">
+        The page updates automatically.
+      </Notice>
+    );
   }
   if (t.status === "failed") {
-    return <Notice tone="bad" title="Transcription failed">{describeError(t.errorCode)}</Notice>;
+    return (
+      <Notice tone="bad" title="Transcription failed">
+        {describeError(t.errorCode)}
+      </Notice>
+    );
   }
-  if (!t.status) return <Notice title="No transcript yet">A transcript is created after the meeting is recorded.</Notice>;
+  if (!t.status)
+    return (
+      <Notice title="No transcript yet">
+        A transcript is created after the meeting is recorded.
+      </Notice>
+    );
   return (
     <div className="stack">
       <p className="small muted">

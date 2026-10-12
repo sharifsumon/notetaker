@@ -3,13 +3,26 @@
  * state the UI must render. Refuses to run in production.
  * Usage: pnpm db:seed  (then sign in via "Dev login" with demo@example.com)
  */
-import { MinutesContentSchema, renderMinutesText, renderSummaryText, SummaryContentSchema } from "@notetaker/shared";
+import {
+  MinutesContentSchema,
+  renderMinutesText,
+  renderSummaryText,
+  SummaryContentSchema,
+} from "@notetaker/shared";
 import { and, eq } from "drizzle-orm";
 import { MockLlmProvider } from "../ai/mock-llm";
 import { ArtifactGenerator } from "../ai/generator";
 import { loadEnv } from "../config/env";
 import { Db } from "../db/client";
-import { authIdentities, meetingArtifacts, meetings, meetingStatusEvents, recordings, transcripts, users } from "../db/schema";
+import {
+  authIdentities,
+  meetingArtifacts,
+  meetings,
+  meetingStatusEvents,
+  recordings,
+  transcripts,
+  users,
+} from "../db/schema";
 import { TokenCipher } from "../lib/crypto";
 import { FIXTURE_TRANSCRIPT } from "../transcription/mock";
 
@@ -20,7 +33,11 @@ if (env.NODE_ENV === "production") {
 }
 const db = new Db(env.DATABASE_URL, 2);
 const cipher = new TokenCipher(env.TOKEN_ENCRYPTION_KEYS, env.TOKEN_ENCRYPTION_ACTIVE_KEY);
-const gen = new ArtifactGenerator(new MockLlmProvider(), { chunkChars: 48_000, maxTranscriptChars: 600_000, maxOutputTokens: 4096 });
+const gen = new ArtifactGenerator(new MockLlmProvider(), {
+  chunkChars: 48_000,
+  maxTranscriptChars: 600_000,
+  maxOutputTokens: 4096,
+});
 const H = 3_600_000;
 
 async function ensureUser(email: string, name: string) {
@@ -29,13 +46,26 @@ async function ensureUser(email: string, name: string) {
       .select({ id: users.id })
       .from(authIdentities)
       .innerJoin(users, eq(users.id, authIdentities.userId))
-      .where(and(eq(authIdentities.provider, "dev"), eq(authIdentities.providerSubject, `dev:${email}`)));
+      .where(
+        and(eq(authIdentities.provider, "dev"), eq(authIdentities.providerSubject, `dev:${email}`)),
+      );
     if (existing) return existing.id;
     const [u] = await tx
       .insert(users)
-      .values({ email, displayName: name, timezone: "Asia/Dhaka", autoRegister: false, recordingNoticeAcknowledgedAt: new Date() })
+      .values({
+        email,
+        displayName: name,
+        timezone: "Asia/Dhaka",
+        autoRegister: false,
+        recordingNoticeAcknowledgedAt: new Date(),
+      })
       .returning();
-    await tx.insert(authIdentities).values({ userId: u!.id, provider: "dev", providerSubject: `dev:${email}`, emailAtProvider: email });
+    await tx.insert(authIdentities).values({
+      userId: u!.id,
+      provider: "dev",
+      providerSubject: `dev:${email}`,
+      emailAtProvider: email,
+    });
     return u!.id;
   });
 }
@@ -43,18 +73,57 @@ async function ensureUser(email: string, name: string) {
 async function seedMeetings(userId: string) {
   const now = Date.now();
   const specs = [
-    { title: "Mobile onboarding launch plan", platform: "google_meet" as const, offset: -26 * H, status: "completed", full: true },
-    { title: "Weekly engineering sync", platform: "microsoft_teams" as const, offset: -3 * 24 * H, status: "completed", full: false },
-    { title: "Vendor demo (bot not admitted)", platform: "microsoft_teams" as const, offset: -50 * H, status: "failed" },
-    { title: "Customer interview", platform: "google_meet" as const, offset: 20 * H, status: "queued" },
-    { title: "Design review", platform: "google_meet" as const, offset: 44 * H, status: "scheduled" },
-    { title: "Board prep [mock:admission-timeout]", platform: "microsoft_teams" as const, offset: 70 * H, status: "scheduled" },
+    {
+      title: "Mobile onboarding launch plan",
+      platform: "google_meet" as const,
+      offset: -26 * H,
+      status: "completed",
+      full: true,
+    },
+    {
+      title: "Weekly engineering sync",
+      platform: "microsoft_teams" as const,
+      offset: -3 * 24 * H,
+      status: "completed",
+      full: false,
+    },
+    {
+      title: "Vendor demo (bot not admitted)",
+      platform: "microsoft_teams" as const,
+      offset: -50 * H,
+      status: "failed",
+    },
+    {
+      title: "Customer interview",
+      platform: "google_meet" as const,
+      offset: 20 * H,
+      status: "queued",
+    },
+    {
+      title: "Design review",
+      platform: "google_meet" as const,
+      offset: 44 * H,
+      status: "scheduled",
+    },
+    {
+      title: "Board prep [mock:admission-timeout]",
+      platform: "microsoft_teams" as const,
+      offset: 70 * H,
+      status: "scheduled",
+    },
   ];
   await db.asSystem(async (tx) => {
-    const existing = await tx.select({ id: meetings.id }).from(meetings).where(eq(meetings.userId, userId)).limit(1);
+    const existing = await tx
+      .select({ id: meetings.id })
+      .from(meetings)
+      .where(eq(meetings.userId, userId))
+      .limit(1);
     if (existing.length) return;
     for (const [i, s] of specs.entries()) {
-      const url = s.platform === "google_meet" ? `https://meet.google.com/abc-defg-hi${"jklmnop"[i]}` : `https://teams.microsoft.com/meet/12345678${i}`;
+      const url =
+        s.platform === "google_meet"
+          ? `https://meet.google.com/abc-defg-hi${"jklmnop"[i]}`
+          : `https://teams.microsoft.com/meet/12345678${i}`;
       const start = new Date(now + s.offset);
       const [m] = await tx
         .insert(meetings)
@@ -73,13 +142,22 @@ async function seedMeetings(userId: string) {
           registrationSource: s.status === "scheduled" ? null : "manual",
         })
         .returning();
-      await tx.insert(meetingStatusEvents).values({ userId, meetingId: m!.id, oldStatus: null, newStatus: s.status, source: "seed" });
+      await tx
+        .insert(meetingStatusEvents)
+        .values({ userId, meetingId: m!.id, oldStatus: null, newStatus: s.status, source: "seed" });
       if (s.status !== "completed") continue;
       // Seeded meetings have recording metadata but no audio file ("Recording file is missing"
       // is shown if played). Use the mock bot provider for a full end-to-end recording.
       const [rec] = await tx
         .insert(recordings)
-        .values({ userId, meetingId: m!.id, storageProvider: "local", status: "failed", errorCode: "recording_unavailable", durationSeconds: 3300 })
+        .values({
+          userId,
+          meetingId: m!.id,
+          storageProvider: "local",
+          status: "failed",
+          errorCode: "recording_unavailable",
+          durationSeconds: 3300,
+        })
         .returning();
       const [t] = await tx
         .insert(transcripts)

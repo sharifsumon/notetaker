@@ -13,7 +13,11 @@ import { requireAdmin } from "./middleware";
  * Operations endpoints (FR-15). Expose job/provider health and safe error codes only —
  * never recordings, transcripts, summaries or minutes.
  */
-export function adminRoutes(c: Container, adminLimiter: RequestHandler, queueCounts?: () => Promise<unknown>): Router {
+export function adminRoutes(
+  c: Container,
+  adminLimiter: RequestHandler,
+  queueCounts?: () => Promise<unknown>,
+): Router {
   const r = Router();
 
   route(
@@ -31,9 +35,14 @@ export function adminRoutes(c: Container, adminLimiter: RequestHandler, queueCou
         await tx
           .select({ type: jobs.type, status: jobs.status, n: count() })
           .from(jobs)
-          .where(sql`${jobs.updatedAt} > now() - interval '7 days' or ${jobs.status} in ('pending','queued','running','failed')`)
+          .where(
+            sql`${jobs.updatedAt} > now() - interval '7 days' or ${jobs.status} in ('pending','queued','running','failed')`,
+          )
           .groupBy(jobs.type, jobs.status),
-        await tx.select({ status: calendarConnections.status, n: count() }).from(calendarConnections).groupBy(calendarConnections.status),
+        await tx
+          .select({ status: calendarConnections.status, n: count() })
+          .from(calendarConnections)
+          .groupBy(calendarConnections.status),
         await tx
           .select({ outcome: webhookEvents.outcome, n: count() })
           .from(webhookEvents)
@@ -50,7 +59,13 @@ export function adminRoutes(c: Container, adminLimiter: RequestHandler, queueCou
       };
       return {
         providers: {
-          meetingBot: c.bot ? { name: c.bot.name, mock: c.bot.isMock, ...(await c.bot.healthCheck().catch(() => ({ ok: false }))) } : null,
+          meetingBot: c.bot
+            ? {
+                name: c.bot.name,
+                mock: c.bot.isMock,
+                ...(await c.bot.healthCheck().catch(() => ({ ok: false }))),
+              }
+            : null,
           speechToText: c.stt ? { name: c.stt.name, model: c.stt.model, mock: c.stt.isMock } : null,
           llm: c.llm ? { name: c.llm.name, model: c.llm.model, mock: c.llm.isMock } : null,
           storage: { name: c.storage.name, ...(await check(() => c.storage.healthCheck())) },
@@ -74,14 +89,21 @@ export function adminRoutes(c: Container, adminLimiter: RequestHandler, queueCou
       auth: "admin",
       query: z
         .object({
-          status: z.enum(["pending", "queued", "running", "succeeded", "failed", "cancelled"]).optional(),
+          status: z
+            .enum(["pending", "queued", "running", "succeeded", "failed", "cancelled"])
+            .optional(),
           type: z.enum(JOB_TYPES).optional(),
           page: z.coerce.number().int().min(1).max(1000).default(1),
           pageSize: z.coerce.number().int().min(1).max(100).default(25),
         })
         .strict(),
       middleware: [requireAdmin, adminLimiter],
-      responses: { 200: { description: "OK", schema: z.object({ items: z.array(AdminJobSchema), total: z.number() }) } },
+      responses: {
+        200: {
+          description: "OK",
+          schema: z.object({ items: z.array(AdminJobSchema), total: z.number() }),
+        },
+      },
     },
     async (_req, _res, { query }) => {
       const conds: SQL[] = [];

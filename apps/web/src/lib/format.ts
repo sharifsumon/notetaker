@@ -8,11 +8,21 @@ function safeTz(tz: string): string {
 }
 
 export function formatDay(iso: string, tz: string): string {
-  return new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: safeTz(tz) }).format(new Date(iso));
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: safeTz(tz),
+  }).format(new Date(iso));
 }
 
 export function formatTime(iso: string, tz: string): string {
-  return new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: safeTz(tz) }).format(new Date(iso));
+  return new Intl.DateTimeFormat("en-GB", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: safeTz(tz),
+  }).format(new Date(iso));
 }
 
 export function formatDateTime(iso: string | null, tz: string): string {
@@ -30,7 +40,10 @@ export function formatDateTime(iso: string | null, tz: string): string {
 }
 
 export function tzAbbrev(iso: string, tz: string): string {
-  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: safeTz(tz), timeZoneName: "short" }).formatToParts(new Date(iso));
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: safeTz(tz),
+    timeZoneName: "short",
+  }).formatToParts(new Date(iso));
   return parts.find((p) => p.type === "timeZoneName")?.value ?? tz;
 }
 

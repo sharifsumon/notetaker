@@ -14,7 +14,13 @@ import {
 import { and, desc, eq, isNull } from "drizzle-orm";
 import type { AuditService } from "../audit/audit.service";
 import type { Db, Tx } from "../db/client";
-import { meetingArtifacts, meetingParticipants, meetings, transcripts, type ArtifactRow } from "../db/schema";
+import {
+  meetingArtifacts,
+  meetingParticipants,
+  meetings,
+  transcripts,
+  type ArtifactRow,
+} from "../db/schema";
 import { Errors, PermanentJobError, ProviderError } from "../lib/errors";
 import type { JobService } from "../jobs/job.service";
 import type { Metrics } from "../metrics";
@@ -44,13 +50,19 @@ export class ArtifactService {
     const [a] = await tx
       .select()
       .from(meetingArtifacts)
-      .where(and(eq(meetingArtifacts.meetingId, meetingId), eq(meetingArtifacts.artifactType, type)))
+      .where(
+        and(eq(meetingArtifacts.meetingId, meetingId), eq(meetingArtifacts.artifactType, type)),
+      )
       .orderBy(desc(meetingArtifacts.version))
       .limit(1);
     return a ?? null;
   }
 
-  private async latestCompleted(tx: Tx, meetingId: string, type: ArtifactType): Promise<ArtifactRow | null> {
+  private async latestCompleted(
+    tx: Tx,
+    meetingId: string,
+    type: ArtifactType,
+  ): Promise<ArtifactRow | null> {
     const [a] = await tx
       .select()
       .from(meetingArtifacts)
@@ -83,7 +95,10 @@ export class ArtifactService {
       throw Errors.conflict("transcript_not_ready", "The transcript is not ready yet");
     }
     if (transcript.status === "failed") {
-      throw Errors.unprocessable("transcript_unavailable", describeError(transcript.errorCode) ?? "Transcript unavailable");
+      throw Errors.unprocessable(
+        "transcript_unavailable",
+        describeError(transcript.errorCode) ?? "Transcript unavailable",
+      );
     }
     if (!this.d.llm) throw Errors.notConfigured("AI generation provider");
 
@@ -91,7 +106,8 @@ export class ArtifactService {
     if (current && (current.status === "pending" || current.status === "processing")) {
       return { artifact: current, created: false };
     }
-    if (current && current.status === "completed" && !regenerate) return { artifact: current, created: false };
+    if (current && current.status === "completed" && !regenerate)
+      return { artifact: current, created: false };
 
     const version = (current?.version ?? 0) + 1;
     const inserted = await tx
@@ -141,7 +157,9 @@ export class ArtifactService {
       const [m] = await tx
         .select()
         .from(meetings)
-        .where(and(eq(meetings.id, meetingId), eq(meetings.userId, userId), isNull(meetings.deletedAt)));
+        .where(
+          and(eq(meetings.id, meetingId), eq(meetings.userId, userId), isNull(meetings.deletedAt)),
+        );
       if (!m || m.status === "deletion_pending") throw Errors.notFound("Meeting");
       const r = await this.requestInTx(tx, meetingId, userId, type, "user", regenerate);
       if (r.created) {
@@ -172,11 +190,16 @@ export class ArtifactService {
   /** Job: generate the artifact version. */
   async process(artifactId: string): Promise<void> {
     const ctx = await this.d.db.asSystem(async (tx) => {
-      const [a] = await tx.select().from(meetingArtifacts).where(eq(meetingArtifacts.id, artifactId));
+      const [a] = await tx
+        .select()
+        .from(meetingArtifacts)
+        .where(eq(meetingArtifacts.id, artifactId));
       if (!a || a.status === "completed") return null;
       const [m] = await tx.select().from(meetings).where(eq(meetings.id, a.meetingId));
       if (!m || m.deletedAt || m.status === "deletion_pending") return null;
-      const [t] = a.transcriptId ? await tx.select().from(transcripts).where(eq(transcripts.id, a.transcriptId)) : [];
+      const [t] = a.transcriptId
+        ? await tx.select().from(transcripts).where(eq(transcripts.id, a.transcriptId))
+        : [];
       const participants = await tx
         .select({ name: meetingParticipants.displayName, source: meetingParticipants.source })
         .from(meetingParticipants)
@@ -201,7 +224,8 @@ export class ArtifactService {
       timezone: m.timezoneAtCreation,
       platform: m.platform,
       participants: fromProvider.length > 0 ? fromProvider : fromCalendar,
-      participantsSource: fromProvider.length > 0 ? "provider" : fromCalendar.length > 0 ? "calendar" : "none",
+      participantsSource:
+        fromProvider.length > 0 ? "provider" : fromCalendar.length > 0 ? "calendar" : "none",
     };
 
     if (!t || t.status !== "completed" || !t.segments) {
@@ -209,7 +233,13 @@ export class ArtifactService {
     }
 
     let content: SummaryContent | MinutesContent;
-    let meta: { provider: string | null; model: string | null; promptVersion: string | null; usage: ArtifactRow["usage"]; isMock: boolean };
+    let meta: {
+      provider: string | null;
+      model: string | null;
+      promptVersion: string | null;
+      usage: ArtifactRow["usage"];
+      isMock: boolean;
+    };
 
     if (t.quality === "insufficient") {
       content =
@@ -240,7 +270,8 @@ export class ArtifactService {
             });
       meta = { provider: "system", model: null, promptVersion: null, usage: null, isMock: false };
     } else {
-      if (!this.d.generator || !this.d.llm) throw new PermanentJobError("generation_failed", "No LLM configured");
+      if (!this.d.generator || !this.d.llm)
+        throw new PermanentJobError("generation_failed", "No LLM configured");
       const metadata = {
         Title: m.title,
         Platform: m.platform,
@@ -287,7 +318,9 @@ export class ArtifactService {
   }
 
   async markFailed(artifactId: string, code: string): Promise<void> {
-    const errorCode = ["generation_invalid_output", "transcript_unavailable"].includes(code) ? code : "generation_failed";
+    const errorCode = ["generation_invalid_output", "transcript_unavailable"].includes(code)
+      ? code
+      : "generation_failed";
     await this.d.db.asSystem(async (tx) => {
       const [a] = await tx
         .update(meetingArtifacts)
@@ -305,17 +338,25 @@ export class ArtifactService {
   // ------------------------------------------------------------------ read API
   async get(userId: string, meetingId: string, type: "summary"): Promise<SummaryArtifact>;
   async get(userId: string, meetingId: string, type: "minutes"): Promise<MinutesArtifact>;
-  async get(userId: string, meetingId: string, type: ArtifactType): Promise<SummaryArtifact | MinutesArtifact> {
+  async get(
+    userId: string,
+    meetingId: string,
+    type: ArtifactType,
+  ): Promise<SummaryArtifact | MinutesArtifact> {
     return this.d.db.asUser(userId, async (tx) => {
       const [m] = await tx
         .select()
         .from(meetings)
-        .where(and(eq(meetings.id, meetingId), eq(meetings.userId, userId), isNull(meetings.deletedAt)));
+        .where(
+          and(eq(meetings.id, meetingId), eq(meetings.userId, userId), isNull(meetings.deletedAt)),
+        );
       if (!m) throw Errors.notFound("Meeting");
       const latest = await this.latest(tx, meetingId, type);
       // Show the newest completed version while a regeneration is in flight.
       const shown =
-        latest && latest.status !== "completed" ? ((await this.latestCompleted(tx, meetingId, type)) ?? latest) : latest;
+        latest && latest.status !== "completed"
+          ? ((await this.latestCompleted(tx, meetingId, type)) ?? latest)
+          : latest;
       const transcript = await this.latestTranscript(tx, meetingId);
       const canGenerate =
         !!this.d.llm &&

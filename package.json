@@ -18,7 +18,9 @@
     "build": "pnpm -r build",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm build",
     "db:migrate": "pnpm --filter @notetaker/server db:migrate",
-    "db:seed": "pnpm --filter @notetaker/server db:seed"
+    "db:seed": "pnpm --filter @notetaker/server db:seed",
+    "setup:env": "node scripts/setup-env.mjs",
+    "openapi": "pnpm --filter @notetaker/server openapi"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

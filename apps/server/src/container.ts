@@ -108,7 +108,10 @@ export function createContainer(env: Env, logger: Logger, o: Overrides = {}) {
   const oauth: Partial<Record<IdentityProvider, OAuthClient>> = o.oauth ?? {};
   if (!o.oauth) {
     if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
-      oauth.google = new OAuthClient("google", { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET });
+      oauth.google = new OAuthClient("google", {
+        clientId: env.GOOGLE_CLIENT_ID,
+        clientSecret: env.GOOGLE_CLIENT_SECRET,
+      });
     }
     if (env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET) {
       oauth.microsoft = new OAuthClient("microsoft", {
@@ -210,15 +213,30 @@ export function createContainer(env: Env, logger: Logger, o: Overrides = {}) {
     recording_ingest: {
       run: (j) => ingest.ingest(j.entityId!),
       onFinalFailure: (j, code) =>
-        ingest.fail({ id: j.entityId! }, code === "storage_error" ? "storage_error" : code === "recording_not_ready" ? "recording_unavailable" : "recording_invalid"),
+        ingest.fail(
+          { id: j.entityId! },
+          code === "storage_error"
+            ? "storage_error"
+            : code === "recording_not_ready"
+              ? "recording_unavailable"
+              : "recording_invalid",
+        ),
     },
     transcribe: {
       run: (j) => transcription.transcribe(j.entityId!),
       onFinalFailure: (j) => transcription.markFailed(j.entityId!, "transcription_failed"),
     },
-    generate_summary: { run: (j) => artifacts.process(j.entityId!), onFinalFailure: (j, c) => artifacts.markFailed(j.entityId!, c) },
-    generate_minutes: { run: (j) => artifacts.process(j.entityId!), onFinalFailure: (j, c) => artifacts.markFailed(j.entityId!, c) },
-    meeting_delete: { run: (j) => deletion.deleteMeeting(j.entityId!, String(j.payload.reason ?? "user_request")) },
+    generate_summary: {
+      run: (j) => artifacts.process(j.entityId!),
+      onFinalFailure: (j, c) => artifacts.markFailed(j.entityId!, c),
+    },
+    generate_minutes: {
+      run: (j) => artifacts.process(j.entityId!),
+      onFinalFailure: (j, c) => artifacts.markFailed(j.entityId!, c),
+    },
+    meeting_delete: {
+      run: (j) => deletion.deleteMeeting(j.entityId!, String(j.payload.reason ?? "user_request")),
+    },
   };
   const runner = new JobRunner(db, jobs, handlers, logger, metrics);
 

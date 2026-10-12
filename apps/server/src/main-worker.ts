@@ -4,9 +4,11 @@ import { createLogger } from "./lib/logger";
 import { startWorker } from "./worker";
 
 const env = loadEnv();
-const logger = createLogger(env.LOG_LEVEL, env.NODE_ENV === "development");
+const logger = createLogger(env.LOG_LEVEL, env.LOG_FORMAT === "pretty");
 const container = createContainer(env, logger);
-const metricsPort = process.env.WORKER_METRICS_PORT ? Number(process.env.WORKER_METRICS_PORT) : undefined;
+const metricsPort = process.env.WORKER_METRICS_PORT
+  ? Number(process.env.WORKER_METRICS_PORT)
+  : undefined;
 const worker = startWorker(container, env.REDIS_URL, metricsPort);
 
 async function shutdown(signal: string) {

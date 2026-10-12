@@ -30,7 +30,9 @@ describe("TokenCipher", () => {
   });
 
   it("rejects malformed keys", () => {
-    expect(() => new TokenCipher(`k1:${Buffer.alloc(16).toString("base64")}`, "k1")).toThrow(/32 bytes/);
+    expect(() => new TokenCipher(`k1:${Buffer.alloc(16).toString("base64")}`, "k1")).toThrow(
+      /32 bytes/,
+    );
     expect(() => new TokenCipher(`k1:${k1}`, "k9")).toThrow();
   });
 });
@@ -38,7 +40,9 @@ describe("TokenCipher", () => {
 describe("helpers", () => {
   it("computes the RFC 7636 S256 PKCE challenge", () => {
     // Test vector from RFC 7636 Appendix B
-    expect(pkceChallenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")).toBe("E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM");
+    expect(pkceChallenge("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk")).toBe(
+      "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM",
+    );
   });
   it("safeEqual compares in constant time and handles length mismatch", () => {
     expect(safeEqual("abc", "abc")).toBe(true);

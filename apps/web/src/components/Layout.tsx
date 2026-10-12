@@ -7,7 +7,12 @@ export function Logo() {
   return (
     <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden="true">
       <rect width="32" height="32" rx="6" fill="var(--signal)" />
-      <path d="M9 9h14M9 14h14M9 19h9" stroke="var(--signal-ink)" strokeWidth="2.4" strokeLinecap="round" />
+      <path
+        d="M9 9h14M9 14h14M9 19h9"
+        stroke="var(--signal-ink)"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
       <circle cx="23" cy="22" r="3.2" fill="var(--highlight)" />
     </svg>
   );
@@ -22,7 +27,8 @@ export function Layout({ me }: { me: Me }) {
       </a>
       {me.features.mockProviders && (
         <div className="mock-banner" role="note">
-          Development mode: recordings, transcripts and notes come from mock providers, not real meetings.
+          Development mode: recordings, transcripts and notes come from mock providers, not real
+          meetings.
         </div>
       )}
       <div className="shell">
@@ -57,7 +63,12 @@ export function Layout({ me }: { me: Me }) {
               <br />
               <span className="muted">Times in {me.timezone}</span>
             </span>
-            <button type="button" className="btn btn-sm" onClick={() => signOut.mutate(false)} disabled={signOut.isPending}>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => signOut.mutate(false)}
+              disabled={signOut.isPending}
+            >
               <LogOut size={16} aria-hidden="true" />
               Sign out
             </button>

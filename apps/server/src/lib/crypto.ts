@@ -1,4 +1,11 @@
-import { createCipheriv, createDecipheriv, createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import {
+  createCipheriv,
+  createDecipheriv,
+  createHash,
+  createHmac,
+  randomBytes,
+  timingSafeEqual,
+} from "node:crypto";
 
 /**
  * Versioned AES-256-GCM encryption for provider tokens at rest.
@@ -17,7 +24,8 @@ export class TokenCipher {
       const [id, b64] = part.split(":").map((s) => s.trim());
       if (!id || !b64) throw new Error("Malformed TOKEN_ENCRYPTION_KEYS entry");
       const key = Buffer.from(b64, "base64");
-      if (key.length !== 32) throw new Error(`Encryption key ${id} must be 32 bytes (base64-encoded)`);
+      if (key.length !== 32)
+        throw new Error(`Encryption key ${id} must be 32 bytes (base64-encoded)`);
       this.keys.set(id, key);
     }
     if (!this.keys.has(activeKeyId)) throw new Error("Active encryption key not found");
@@ -30,7 +38,12 @@ export class TokenCipher {
     cipher.setAAD(Buffer.from(aad));
     const ct = Buffer.concat([cipher.update(plaintext, "utf8"), cipher.final()]);
     const tag = cipher.getAuthTag();
-    return [this.activeKeyId, iv.toString("base64url"), tag.toString("base64url"), ct.toString("base64url")].join(".");
+    return [
+      this.activeKeyId,
+      iv.toString("base64url"),
+      tag.toString("base64url"),
+      ct.toString("base64url"),
+    ].join(".");
   }
 
   decrypt(payload: string, aad = ""): string {
@@ -41,7 +54,10 @@ export class TokenCipher {
     const decipher = createDecipheriv("aes-256-gcm", key, Buffer.from(ivB, "base64url"));
     decipher.setAAD(Buffer.from(aad));
     decipher.setAuthTag(Buffer.from(tagB, "base64url"));
-    return Buffer.concat([decipher.update(Buffer.from(ctB, "base64url")), decipher.final()]).toString("utf8");
+    return Buffer.concat([
+      decipher.update(Buffer.from(ctB, "base64url")),
+      decipher.final(),
+    ]).toString("utf8");
   }
 
   needsRotation(payload: string): boolean {

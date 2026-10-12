@@ -30,17 +30,34 @@ export class AuthService {
         .select({ u: users })
         .from(authIdentities)
         .innerJoin(users, eq(users.id, authIdentities.userId))
-        .where(and(eq(authIdentities.provider, provider), eq(authIdentities.providerSubject, identity.subject)));
+        .where(
+          and(
+            eq(authIdentities.provider, provider),
+            eq(authIdentities.providerSubject, identity.subject),
+          ),
+        );
 
       if (existing) {
         if (existing.u.deletedAt) throw Errors.forbidden("This account has been deleted");
         if (opts.linkToUserId && existing.u.id !== opts.linkToUserId) {
-          throw Errors.conflict("identity_already_linked", "This sign-in is already linked to a different account");
+          throw Errors.conflict(
+            "identity_already_linked",
+            "This sign-in is already linked to a different account",
+          );
         }
         await tx
           .update(authIdentities)
-          .set({ emailAtProvider: identity.email, emailVerified: identity.emailVerified, updatedAt: new Date() })
-          .where(and(eq(authIdentities.provider, provider), eq(authIdentities.providerSubject, identity.subject)));
+          .set({
+            emailAtProvider: identity.email,
+            emailVerified: identity.emailVerified,
+            updatedAt: new Date(),
+          })
+          .where(
+            and(
+              eq(authIdentities.provider, provider),
+              eq(authIdentities.providerSubject, identity.subject),
+            ),
+          );
         await this.audit.record(tx, {
           actorType: "user",
           actorId: existing.u.id,

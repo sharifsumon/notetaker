@@ -19,7 +19,10 @@ const env = loadEnv({
 const logger = createLogger("silent");
 const c = createContainer(env, logger, { db: new Db(env.DATABASE_URL, 1) });
 createApp(c); // registers routes
-const out = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../docs/openapi.json");
+const out = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../../../docs/openapi.json",
+);
 writeFileSync(out, `${JSON.stringify(buildOpenApi("0.1.0"), null, 2)}\n`);
 console.log(`Wrote ${out}`);
 await c.db.close();

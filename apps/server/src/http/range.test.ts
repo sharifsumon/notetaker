@@ -29,9 +29,13 @@ describe("Deepgram response normalization", () => {
       },
     });
     expect(r.language).toBe("en");
-    expect(r.segments).toEqual([{ startMs: 500, endMs: 1200, speaker: "Speaker 1", text: "hello there" }]);
+    expect(r.segments).toEqual([
+      { startMs: 500, endMs: 1200, speaker: "Speaker 1", text: "hello there" },
+    ]);
   });
   it("returns no segments for silence", () => {
-    expect(dg.normalize({ results: { channels: [{ alternatives: [{ transcript: "" }] }] } }).segments).toEqual([]);
+    expect(
+      dg.normalize({ results: { channels: [{ alternatives: [{ transcript: "" }] }] } }).segments,
+    ).toEqual([]);
   });
 });

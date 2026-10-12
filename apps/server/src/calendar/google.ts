@@ -1,7 +1,12 @@
 import { detectMeetingUrl, findMeetingUrlInText } from "@notetaker/shared";
 import { ProviderError } from "../lib/errors";
 import { ReauthRequiredError } from "../auth/oauth";
-import { CursorExpiredError, type CalendarApi, type ChangesResult, type NormalizedEvent } from "./types";
+import {
+  CursorExpiredError,
+  type CalendarApi,
+  type ChangesResult,
+  type NormalizedEvent,
+} from "./types";
 
 interface GoogleEvent {
   id: string;
@@ -14,7 +19,13 @@ interface GoogleEvent {
   conferenceData?: { entryPoints?: Array<{ entryPointType?: string; uri?: string }> };
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
-  attendees?: Array<{ email?: string; displayName?: string; organizer?: boolean; self?: boolean; resource?: boolean }>;
+  attendees?: Array<{
+    email?: string;
+    displayName?: string;
+    organizer?: boolean;
+    self?: boolean;
+    resource?: boolean;
+  }>;
 }
 
 /**
@@ -43,7 +54,11 @@ export class GoogleCalendarApi implements CalendarApi {
     const maxPages = opts.maxPages ?? 50;
 
     for (let page = 0; page < maxPages; page++) {
-      const p = new URLSearchParams({ singleEvents: "true", maxResults: "250", showDeleted: "true" });
+      const p = new URLSearchParams({
+        singleEvents: "true",
+        maxResults: "250",
+        showDeleted: "true",
+      });
       if (opts.cursor) p.set("syncToken", opts.cursor);
       else {
         p.set("timeMin", opts.windowStart.toISOString());
@@ -64,14 +79,31 @@ export class GoogleCalendarApi implements CalendarApi {
       if (res.status === 401) throw new ReauthRequiredError();
       if (res.status === 429 || res.status === 403 || res.status >= 500) {
         // 403 is Google's rateLimitExceeded/userRateLimitExceeded (and also insufficient scope).
-        const body = (await res.json().catch(() => ({}))) as { error?: { errors?: Array<{ reason?: string }> } };
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: { errors?: Array<{ reason?: string }> };
+        };
         const reason = body.error?.errors?.[0]?.reason ?? "";
         if (res.status === 403 && !/rateLimit/i.test(reason)) throw new ReauthRequiredError();
-        throw new ProviderError("calendar_rate_limited", `Google Calendar HTTP ${res.status}`, true, res.status);
+        throw new ProviderError(
+          "calendar_rate_limited",
+          `Google Calendar HTTP ${res.status}`,
+          true,
+          res.status,
+        );
       }
-      if (!res.ok) throw new ProviderError("calendar_sync_failed", `Google Calendar HTTP ${res.status}`, false, res.status);
+      if (!res.ok)
+        throw new ProviderError(
+          "calendar_sync_failed",
+          `Google Calendar HTTP ${res.status}`,
+          false,
+          res.status,
+        );
 
-      const body = (await res.json()) as { items?: GoogleEvent[]; nextPageToken?: string; nextSyncToken?: string };
+      const body = (await res.json()) as {
+        items?: GoogleEvent[];
+        nextPageToken?: string;
+        nextSyncToken?: string;
+      };
       for (const item of body.items ?? []) events.push(normalizeGoogleEvent(item));
       if (body.nextPageToken) {
         pageToken = body.nextPageToken;
@@ -86,7 +118,9 @@ export class GoogleCalendarApi implements CalendarApi {
 
 export function normalizeGoogleEvent(e: GoogleEvent): NormalizedEvent {
   const isAllDay = !!e.start?.date && !e.start?.dateTime;
-  const videoEntry = e.conferenceData?.entryPoints?.find((ep) => ep.entryPointType === "video")?.uri;
+  const videoEntry = e.conferenceData?.entryPoints?.find(
+    (ep) => ep.entryPointType === "video",
+  )?.uri;
   const meeting =
     detectMeetingUrl(e.hangoutLink) ??
     detectMeetingUrl(videoEntry) ??

@@ -28,7 +28,8 @@ export function webhookRoutes(c: Container, webhookLimiter: RequestHandler): Rou
       if (!provider || provider.name !== params.provider) throw Errors.notFound("Webhook");
       const raw = Buffer.isBuffer(req.body) ? (req.body as Buffer) : Buffer.alloc(0);
       const headers: Record<string, string | undefined> = {};
-      for (const [k, v] of Object.entries(req.headers)) headers[k.toLowerCase()] = Array.isArray(v) ? v[0] : v;
+      for (const [k, v] of Object.entries(req.headers))
+        headers[k.toLowerCase()] = Array.isArray(v) ? v[0] : v;
       let events;
       try {
         events = provider.verifyAndParseWebhook(raw, headers, new Date());
@@ -36,7 +37,13 @@ export function webhookRoutes(c: Container, webhookLimiter: RequestHandler): Rou
         const reason = err instanceof WebhookVerificationError ? err.reason : "malformed";
         c.metrics.webhookVerificationFailures.inc({ provider: provider.name, reason });
         req.log.warn({ provider: provider.name, reason }, "webhook rejected");
-        res.status(401).json({ error: { code: "webhook_verification_failed", message: "Webhook verification failed", requestId: req.requestId } });
+        res.status(401).json({
+          error: {
+            code: "webhook_verification_failed",
+            message: "Webhook verification failed",
+            requestId: req.requestId,
+          },
+        });
         return;
       }
       const outcomes = [];

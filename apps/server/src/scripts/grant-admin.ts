@@ -19,9 +19,19 @@ if (!url) {
 const db = new Db(url, 1);
 const role = flag === "--revoke" ? "user" : "admin";
 const updated = await db.asSystem(async (tx) => {
-  const r = await tx.update(users).set({ role, updatedAt: new Date() }).where(eq(users.id, userId)).returning({ id: users.id });
+  const r = await tx
+    .update(users)
+    .set({ role, updatedAt: new Date() })
+    .where(eq(users.id, userId))
+    .returning({ id: users.id });
   if (r.length) {
-    await tx.insert(auditEvents).values({ actorType: "system", actorId: "cli", action: `admin.role_${role === "admin" ? "granted" : "revoked"}`, targetType: "user", targetId: userId });
+    await tx.insert(auditEvents).values({
+      actorType: "system",
+      actorId: "cli",
+      action: `admin.role_${role === "admin" ? "granted" : "revoked"}`,
+      targetType: "user",
+      targetId: userId,
+    });
   }
   return r.length;
 });

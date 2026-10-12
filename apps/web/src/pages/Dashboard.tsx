@@ -25,15 +25,31 @@ export function DashboardPage() {
 
       {!me.recordingNoticeAcknowledgedAt && (
         <div className="section">
-          <Notice tone="wait" title="Finish setup to start recording" actions={<Link className="btn btn-sm" to="/onboarding">Review recording settings</Link>}>
+          <Notice
+            tone="wait"
+            title="Finish setup to start recording"
+            actions={
+              <Link className="btn btn-sm" to="/onboarding">
+                Review recording settings
+              </Link>
+            }
+          >
             You need to review the recording notice before any meeting can be recorded.
           </Notice>
         </div>
       )}
       {noCalendar && me.recordingNoticeAcknowledgedAt && (
         <div className="section">
-          <Notice title="No calendar connected" actions={<Link className="btn btn-sm" to="/settings">Connect a calendar</Link>}>
-            Connect Google or Outlook Calendar to see your Meet and Teams meetings here automatically.
+          <Notice
+            title="No calendar connected"
+            actions={
+              <Link className="btn btn-sm" to="/settings">
+                Connect a calendar
+              </Link>
+            }
+          >
+            Connect Google or Outlook Calendar to see your Meet and Teams meetings here
+            automatically.
           </Notice>
         </div>
       )}
@@ -68,7 +84,8 @@ export function DashboardPage() {
           <ErrorNotice error={upcoming.error} onRetry={() => void upcoming.refetch()} />
         ) : upcoming.data!.items.length === 0 ? (
           <EmptyState title="No upcoming meetings">
-            Meetings from connected calendars appear here. You can also record a meeting link directly.
+            Meetings from connected calendars appear here. You can also record a meeting link
+            directly.
           </EmptyState>
         ) : (
           <MeetingList items={upcoming.data!.items} timezone={me.timezone} />
@@ -85,7 +102,9 @@ export function DashboardPage() {
         ) : recent.isError ? (
           <ErrorNotice error={recent.error} onRetry={() => void recent.refetch()} />
         ) : recent.data!.items.length === 0 ? (
-          <EmptyState title="No past meetings yet">Recorded meetings and their notes will be listed here.</EmptyState>
+          <EmptyState title="No past meetings yet">
+            Recorded meetings and their notes will be listed here.
+          </EmptyState>
         ) : (
           <MeetingList items={recent.data!.items} timezone={me.timezone} />
         )}

@@ -151,7 +151,9 @@ export function meetingRoutes(
       const [m] = await tx
         .select()
         .from(meetings)
-        .where(and(eq(meetings.id, meetingId), eq(meetings.userId, userId), isNull(meetings.deletedAt)));
+        .where(
+          and(eq(meetings.id, meetingId), eq(meetings.userId, userId), isNull(meetings.deletedAt)),
+        );
       if (!m) throw Errors.notFound("Meeting");
       const [rec] = await tx.select().from(recordings).where(eq(recordings.meetingId, meetingId));
       return { m, rec: rec ?? null };
@@ -185,7 +187,12 @@ export function meetingRoutes(
     },
   );
 
-  const serveRecording = async (req: Parameters<RequestHandler>[0], res: Response, meetingId: string, download: boolean) => {
+  const serveRecording = async (
+    req: Parameters<RequestHandler>[0],
+    res: Response,
+    meetingId: string,
+    download: boolean,
+  ) => {
     const { rec, m } = await loadRecording(req.user!.id, meetingId);
     if (!rec || rec.status !== "ready" || !rec.storageKey || m.status === "deletion_pending") {
       throw Errors.conflict("recording_not_available", "Recording not available yet");
@@ -193,7 +200,14 @@ export function meetingRoutes(
     const filename = safeFilename(m.title, m.scheduledStartAt);
     if (download) {
       await c.db.asSystem((tx) =>
-        c.audit.record(tx, { actorType: "user", actorId: req.user!.id, action: "recording.downloaded", targetType: "meeting", targetId: m.id, correlationId: req.requestId }),
+        c.audit.record(tx, {
+          actorType: "user",
+          actorId: req.user!.id,
+          action: "recording.downloaded",
+          targetType: "meeting",
+          targetId: m.id,
+          correlationId: req.requestId,
+        }),
       );
     }
     res.setHeader("Cache-Control", "private, no-store");
@@ -212,7 +226,10 @@ export function meetingRoutes(
     res.setHeader("Accept-Ranges", "bytes");
     res.setHeader("Content-Type", rec.mimeType ?? "audio/mp4");
     res.setHeader("X-Content-Type-Options", "nosniff");
-    res.setHeader("Content-Disposition", `${download ? "attachment" : "inline"}; filename="${filename}"`);
+    res.setHeader(
+      "Content-Disposition",
+      `${download ? "attachment" : "inline"}; filename="${filename}"`,
+    );
     if (range === "invalid") {
       res.status(416).setHeader("Content-Range", `bytes */${stat.sizeBytes}`);
       res.end();
@@ -242,7 +259,10 @@ export function meetingRoutes(
       auth: "user",
       params: MeetingParams,
       middleware: [requireUser, limits.download],
-      responses: { 200: { description: "Audio", contentType: "audio/mp4" }, 206: { description: "Partial audio" } },
+      responses: {
+        200: { description: "Audio", contentType: "audio/mp4" },
+        206: { description: "Partial audio" },
+      },
     },
     (req, res, { params }) => serveRecording(req, res, params.meetingId, false),
   );
@@ -281,7 +301,13 @@ export function meetingRoutes(
         const [m] = await tx
           .select({ id: meetings.id })
           .from(meetings)
-          .where(and(eq(meetings.id, params.meetingId), eq(meetings.userId, req.user!.id), isNull(meetings.deletedAt)));
+          .where(
+            and(
+              eq(meetings.id, params.meetingId),
+              eq(meetings.userId, req.user!.id),
+              isNull(meetings.deletedAt),
+            ),
+          );
         if (!m) throw Errors.notFound("Meeting");
         const [t] = await tx
           .select()
@@ -310,12 +336,20 @@ export function meetingRoutes(
       {
         method: "get",
         path: `/meetings/:meetingId/${type}`,
-        summary: type === "summary" ? "AI summary for the meeting" : "Minutes of Meeting (MoM) for the meeting",
+        summary:
+          type === "summary"
+            ? "AI summary for the meeting"
+            : "Minutes of Meeting (MoM) for the meeting",
         tag: "Artifacts",
         auth: "user",
         params: MeetingParams,
         middleware: [requireUser],
-        responses: { 200: { description: "OK", schema: type === "summary" ? SummaryArtifactSchema : MinutesArtifactSchema } },
+        responses: {
+          200: {
+            description: "OK",
+            schema: type === "summary" ? SummaryArtifactSchema : MinutesArtifactSchema,
+          },
+        },
       },
       (req, _res, { params }) =>
         type === "summary"
@@ -337,11 +371,23 @@ export function meetingRoutes(
         responses: { 202: { description: "Generation queued or already in progress" } },
       },
       async (req, res, { params, body }) => {
-        const r2 = await c.artifacts.requestByUser(req.user!.id, params.meetingId, type, body.regenerate, req.requestId);
+        const r2 = await c.artifacts.requestByUser(
+          req.user!.id,
+          params.meetingId,
+          type,
+          body.regenerate,
+          req.requestId,
+        );
         res.status(202);
         return type === "summary"
-          ? { created: r2.created, artifact: await c.artifacts.get(req.user!.id, params.meetingId, "summary") }
-          : { created: r2.created, artifact: await c.artifacts.get(req.user!.id, params.meetingId, "minutes") };
+          ? {
+              created: r2.created,
+              artifact: await c.artifacts.get(req.user!.id, params.meetingId, "summary"),
+            }
+          : {
+              created: r2.created,
+              artifact: await c.artifacts.get(req.user!.id, params.meetingId, "minutes"),
+            };
       },
     );
   }

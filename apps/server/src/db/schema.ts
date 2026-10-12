@@ -12,7 +12,10 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-const id = () => uuid("id").primaryKey().default(sql`gen_random_uuid()`);
+const id = () =>
+  uuid("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`);
 const ts = (name: string) => timestamp(name, { withTimezone: true, mode: "date" });
 const createdAt = () => ts("created_at").notNull().defaultNow();
 const updatedAt = () => ts("updated_at").notNull().defaultNow();
@@ -26,7 +29,9 @@ export const users = pgTable(
     emailVerified: boolean("email_verified").notNull().default(false),
     displayName: text("display_name").notNull(),
     timezone: text("timezone").notNull().default("UTC"),
-    role: text("role", { enum: ["user", "admin"] }).notNull().default("user"),
+    role: text("role", { enum: ["user", "admin"] })
+      .notNull()
+      .default("user"),
     /** null = user has not made an explicit choice yet (onboarding). */
     autoRegister: boolean("auto_register"),
     recordingNoticeAcknowledgedAt: ts("recording_notice_acknowledged_at"),
@@ -73,7 +78,10 @@ export const sessions = pgTable(
     expiresAt: ts("expires_at").notNull(),
     revokedAt: ts("revoked_at"),
   },
-  (t) => [uniqueIndex("sessions_token_hash_uq").on(t.tokenHash), index("sessions_user_idx").on(t.userId)],
+  (t) => [
+    uniqueIndex("sessions_token_hash_uq").on(t.tokenHash),
+    index("sessions_user_idx").on(t.userId),
+  ],
 );
 
 // ---------------------------------------------------------------- calendars
@@ -90,9 +98,16 @@ export const calendarConnections = pgTable(
     encryptedRefreshToken: text("encrypted_refresh_token"),
     encryptedAccessToken: text("encrypted_access_token"),
     accessTokenExpiresAt: ts("access_token_expires_at"),
-    scopes: text("scopes").array().notNull().default(sql`'{}'::text[]`),
+    scopes: text("scopes")
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
     /** Provider sync cursor: Google syncToken or Microsoft deltaLink (encrypted is unnecessary; not a credential). */
-    syncState: jsonb("sync_state").$type<{ cursor?: string; windowStart?: string; windowEnd?: string }>(),
+    syncState: jsonb("sync_state").$type<{
+      cursor?: string;
+      windowStart?: string;
+      windowEnd?: string;
+    }>(),
     status: text("status", { enum: ["active", "reconnect_required", "error", "disconnected"] })
       .notNull()
       .default("active"),
@@ -238,7 +253,10 @@ export const transcripts = pgTable(
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [uniqueIndex("transcripts_recording_uq").on(t.recordingId), index("transcripts_meeting_idx").on(t.meetingId)],
+  (t) => [
+    uniqueIndex("transcripts_recording_uq").on(t.recordingId),
+    index("transcripts_meeting_idx").on(t.meetingId),
+  ],
 );
 
 export const meetingArtifacts = pgTable(
@@ -315,14 +333,19 @@ export const jobs = pgTable(
     entityId: text("entity_id"),
     userId: uuid("user_id"),
     idempotencyKey: text("idempotency_key").notNull(),
-    status: text("status", { enum: ["pending", "queued", "running", "succeeded", "failed", "cancelled"] })
+    status: text("status", {
+      enum: ["pending", "queued", "running", "succeeded", "failed", "cancelled"],
+    })
       .notNull()
       .default("pending"),
     attempts: integer("attempts").notNull().default(0),
     maxAttempts: integer("max_attempts").notNull().default(5),
     runAt: ts("run_at").notNull().defaultNow(),
     nextRetryAt: ts("next_retry_at"),
-    payload: jsonb("payload").$type<Record<string, unknown>>().notNull().default(sql`'{}'::jsonb`),
+    payload: jsonb("payload")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default(sql`'{}'::jsonb`),
     lastErrorCode: text("last_error_code"),
     lastErrorMessage: text("last_error_message"),
     createdAt: createdAt(),
@@ -349,7 +372,10 @@ export const auditEvents = pgTable(
     metadata: jsonb("metadata").$type<Record<string, unknown>>(),
     occurredAt: ts("occurred_at").notNull().defaultNow(),
   },
-  (t) => [index("audit_events_target_idx").on(t.targetType, t.targetId), index("audit_events_time_idx").on(t.occurredAt)],
+  (t) => [
+    index("audit_events_target_idx").on(t.targetType, t.targetId),
+    index("audit_events_time_idx").on(t.occurredAt),
+  ],
 );
 
 export type User = typeof users.$inferSelect;

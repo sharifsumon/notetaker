@@ -12,7 +12,11 @@ export function isValidTimeZone(tz: string): boolean {
   }
 }
 
-export const TimeZoneSchema = z.string().min(1).max(64).refine(isValidTimeZone, "Invalid IANA time zone");
+export const TimeZoneSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .refine(isValidTimeZone, "Invalid IANA time zone");
 const IsoDate = z.iso.datetime({ offset: true });
 const Uuid = z.uuid();
 
@@ -37,7 +41,9 @@ export const MeSchema = z.object({
   role: z.enum(["user", "admin"]),
   autoRegister: z.boolean().nullable(),
   recordingNoticeAcknowledgedAt: z.string().nullable(),
-  identities: z.array(z.object({ provider: z.enum(["google", "microsoft", "dev"]), email: z.string().nullable() })),
+  identities: z.array(
+    z.object({ provider: z.enum(["google", "microsoft", "dev"]), email: z.string().nullable() }),
+  ),
   csrfToken: z.string(),
   features: z.object({
     devLogin: z.boolean(),
@@ -67,7 +73,12 @@ export const AuthConfigSchema = z.object({
 // ---------- Calendar ----------
 export const CALENDAR_PROVIDERS = ["google_calendar", "microsoft_calendar"] as const;
 export type CalendarProvider = (typeof CALENDAR_PROVIDERS)[number];
-export const CALENDAR_CONNECTION_STATUSES = ["active", "reconnect_required", "error", "disconnected"] as const;
+export const CALENDAR_CONNECTION_STATUSES = [
+  "active",
+  "reconnect_required",
+  "error",
+  "disconnected",
+] as const;
 
 export const CalendarConnectionSchema = z.object({
   id: Uuid,
@@ -219,9 +230,15 @@ const artifactBase = {
   canGenerate: z.boolean(),
 };
 
-export const SummaryArtifactSchema = z.object({ ...artifactBase, content: SummaryContentSchema.nullable() });
+export const SummaryArtifactSchema = z.object({
+  ...artifactBase,
+  content: SummaryContentSchema.nullable(),
+});
 export type SummaryArtifact = z.infer<typeof SummaryArtifactSchema>;
-export const MinutesArtifactSchema = z.object({ ...artifactBase, content: MinutesContentSchema.nullable() });
+export const MinutesArtifactSchema = z.object({
+  ...artifactBase,
+  content: MinutesContentSchema.nullable(),
+});
 export type MinutesArtifact = z.infer<typeof MinutesArtifactSchema>;
 
 export const GenerateArtifactSchema = z.object({ regenerate: z.boolean().default(false) }).strict();

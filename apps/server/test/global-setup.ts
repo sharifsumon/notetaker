@@ -7,7 +7,8 @@ import { runMigrations } from "../src/db/migrate";
  * NON-superuser login role in `notetaker_app` so row-level security is genuinely enforced.
  * Requires TEST_DATABASE_ADMIN_URL (defaults to a local postgres superuser).
  */
-const ADMIN_URL = process.env.TEST_DATABASE_ADMIN_URL ?? "postgres://postgres@127.0.0.1:5432/postgres";
+const ADMIN_URL =
+  process.env.TEST_DATABASE_ADMIN_URL ?? "postgres://postgres@127.0.0.1:5432/postgres";
 const APP_ROLE = "notetaker_test_app";
 const APP_PASSWORD = "test-only-password";
 

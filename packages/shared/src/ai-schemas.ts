@@ -45,8 +45,12 @@ export type ActionItem = z.infer<typeof ActionItemSchema>;
 export const MinutesModelOutputSchema = z.object({
   objective: text(1000).nullable(),
   discussionPoints: z.array(z.object({ topic: text(300), summary: text(2000) })).max(40),
-  decisions: z.array(z.object({ decision: text(1000), evidence: z.string().trim().max(500).nullable() })).max(40),
-  proposals: z.array(z.object({ proposal: text(1000), evidence: z.string().trim().max(500).nullable() })).max(40),
+  decisions: z
+    .array(z.object({ decision: text(1000), evidence: z.string().trim().max(500).nullable() }))
+    .max(40),
+  proposals: z
+    .array(z.object({ proposal: text(1000), evidence: z.string().trim().max(500).nullable() }))
+    .max(40),
   actionItems: z.array(ActionItemSchema).max(60),
   risks: z.array(text(1000)).max(30),
   openQuestions: z.array(text(1000)).max(30),
@@ -80,8 +84,12 @@ export type MinutesContent = z.infer<typeof MinutesContentSchema>;
 /** Intermediate per-chunk notes used for long transcripts (map step). */
 export const ChunkNotesSchema = z.object({
   discussionPoints: z.array(z.object({ topic: text(300), summary: text(2000) })).max(30),
-  decisions: z.array(z.object({ decision: text(1000), evidence: z.string().trim().max(500).nullable() })).max(30),
-  proposals: z.array(z.object({ proposal: text(1000), evidence: z.string().trim().max(500).nullable() })).max(30),
+  decisions: z
+    .array(z.object({ decision: text(1000), evidence: z.string().trim().max(500).nullable() }))
+    .max(30),
+  proposals: z
+    .array(z.object({ proposal: text(1000), evidence: z.string().trim().max(500).nullable() }))
+    .max(30),
   actionItems: z.array(ActionItemSchema).max(40),
   risks: z.array(text(1000)).max(20),
   openQuestions: z.array(text(1000)).max(20),

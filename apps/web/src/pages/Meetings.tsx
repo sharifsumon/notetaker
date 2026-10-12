@@ -1,4 +1,11 @@
-import { MEETING_STATUSES, MEETING_STATUS_LABELS, PLATFORM_LABELS, PLATFORMS, type Me, type MeetingListQuery } from "@notetaker/shared";
+import {
+  MEETING_STATUSES,
+  MEETING_STATUS_LABELS,
+  PLATFORM_LABELS,
+  PLATFORMS,
+  type Me,
+  type MeetingListQuery,
+} from "@notetaker/shared";
 import { useEffect, useState } from "react";
 import { useOutletContext, useSearchParams } from "react-router";
 import { AddMeetingDialog } from "../components/AddMeetingDialog";
@@ -62,11 +69,21 @@ export function MeetingsPage() {
       <form className="filters" role="search" onSubmit={(e) => e.preventDefault()}>
         <div className="field">
           <label htmlFor="f-q">Search by title</label>
-          <input id="f-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. planning" />
+          <input
+            id="f-q"
+            type="search"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="e.g. planning"
+          />
         </div>
         <div className="field">
           <label htmlFor="f-view">Show</label>
-          <select id="f-view" value={view} onChange={(e) => set("view", e.target.value === "all" ? "" : e.target.value)}>
+          <select
+            id="f-view"
+            value={view}
+            onChange={(e) => set("view", e.target.value === "all" ? "" : e.target.value)}
+          >
             <option value="all">All meetings</option>
             <option value="upcoming">Upcoming</option>
             <option value="past">Past</option>
@@ -74,7 +91,11 @@ export function MeetingsPage() {
         </div>
         <div className="field">
           <label htmlFor="f-platform">Platform</label>
-          <select id="f-platform" value={params.get("platform") ?? ""} onChange={(e) => set("platform", e.target.value)}>
+          <select
+            id="f-platform"
+            value={params.get("platform") ?? ""}
+            onChange={(e) => set("platform", e.target.value)}
+          >
             <option value="">Any platform</option>
             {PLATFORMS.map((p) => (
               <option key={p} value={p}>
@@ -85,7 +106,11 @@ export function MeetingsPage() {
         </div>
         <div className="field">
           <label htmlFor="f-status">Status</label>
-          <select id="f-status" value={params.get("status") ?? ""} onChange={(e) => set("status", e.target.value)}>
+          <select
+            id="f-status"
+            value={params.get("status") ?? ""}
+            onChange={(e) => set("status", e.target.value)}
+          >
             <option value="">Any status</option>
             {MEETING_STATUSES.filter((s) => s !== "deletion_pending").map((s) => (
               <option key={s} value={s}>
@@ -96,7 +121,12 @@ export function MeetingsPage() {
         </div>
         <div className="field">
           <label htmlFor="f-from">From date</label>
-          <input id="f-from" type="date" value={from} onChange={(e) => set("from", e.target.value)} />
+          <input
+            id="f-from"
+            type="date"
+            value={from}
+            onChange={(e) => set("from", e.target.value)}
+          />
         </div>
         <div className="field">
           <label htmlFor="f-to">To date</label>
@@ -113,13 +143,19 @@ export function MeetingsPage() {
           <EmptyState
             title="No meetings match these filters"
             action={
-              <button type="button" className="btn btn-sm" onClick={() => (setQ(""), setParams({}, { replace: true }))}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => (setQ(""), setParams({}, { replace: true }))}
+              >
                 Clear filters
               </button>
             }
           />
         ) : (
-          <EmptyState title="No meetings yet">Connect a calendar in Settings or record a meeting link.</EmptyState>
+          <EmptyState title="No meetings yet">
+            Connect a calendar in Settings or record a meeting link.
+          </EmptyState>
         )
       ) : (
         <>
@@ -129,10 +165,20 @@ export function MeetingsPage() {
               Page {page} of {totalPages} ({list.data!.total} meetings)
             </span>
             <span className="row">
-              <button type="button" className="btn btn-sm" disabled={page <= 1} onClick={() => set("page", String(page - 1))}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                disabled={page <= 1}
+                onClick={() => set("page", String(page - 1))}
+              >
                 Previous page
               </button>
-              <button type="button" className="btn btn-sm" disabled={page >= totalPages} onClick={() => set("page", String(page + 1))}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                disabled={page >= totalPages}
+                onClick={() => set("page", String(page + 1))}
+              >
                 Next page
               </button>
             </span>

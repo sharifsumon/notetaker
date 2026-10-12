@@ -5,7 +5,10 @@ describe("detectMeetingUrl", () => {
   it.each([
     ["https://meet.google.com/abc-defg-hij", "google_meet"],
     ["https://meet.google.com/abc-defg-hij/", "google_meet"],
-    ["https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc%40thread.v2/0?context=%7b%7d", "microsoft_teams"],
+    [
+      "https://teams.microsoft.com/l/meetup-join/19%3ameeting_abc%40thread.v2/0?context=%7b%7d",
+      "microsoft_teams",
+    ],
     ["https://teams.microsoft.com/meet/1234567890?p=abc", "microsoft_teams"],
     ["https://teams.live.com/meet/9876543210", "microsoft_teams"],
   ])("accepts %s", (url, platform) => {
@@ -29,9 +32,9 @@ describe("detectMeetingUrl", () => {
   });
 
   it("normalizes Google Meet URLs", () => {
-    expect(detectMeetingUrl("https://meet.google.com/abc-defg-hij/?authuser=0")?.normalizedUrl).toBe(
-      "https://meet.google.com/abc-defg-hij",
-    );
+    expect(
+      detectMeetingUrl("https://meet.google.com/abc-defg-hij/?authuser=0")?.normalizedUrl,
+    ).toBe("https://meet.google.com/abc-defg-hij");
   });
 
   it("finds a meeting URL in free text", () => {

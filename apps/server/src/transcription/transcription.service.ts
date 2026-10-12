@@ -29,21 +29,38 @@ export class TranscriptionService {
 
   async transcribe(recordingId: string): Promise<void> {
     const stt = this.d.stt;
-    if (!stt) throw new PermanentJobError("transcription_failed", "No speech-to-text provider configured");
+    if (!stt)
+      throw new PermanentJobError("transcription_failed", "No speech-to-text provider configured");
 
     const ctx = await this.d.db.asSystem(async (tx) => {
       const [rec] = await tx.select().from(recordings).where(eq(recordings.id, recordingId));
       if (!rec || rec.status !== "ready" || !rec.storageKey) return null;
       const [m] = await tx.select().from(meetings).where(eq(meetings.id, rec.meetingId));
       if (!m || m.deletedAt || m.status === "deletion_pending") return null;
-      const [existing] = await tx.select().from(transcripts).where(eq(transcripts.recordingId, rec.id));
+      const [existing] = await tx
+        .select()
+        .from(transcripts)
+        .where(eq(transcripts.recordingId, rec.id));
       if (existing?.status === "completed") return null; // idempotent
       await tx
         .insert(transcripts)
-        .values({ userId: rec.userId, meetingId: rec.meetingId, recordingId: rec.id, status: "processing", provider: stt.name, model: stt.model })
+        .values({
+          userId: rec.userId,
+          meetingId: rec.meetingId,
+          recordingId: rec.id,
+          status: "processing",
+          provider: stt.name,
+          model: stt.model,
+        })
         .onConflictDoUpdate({
           target: transcripts.recordingId,
-          set: { status: "processing", errorCode: null, provider: stt.name, model: stt.model, updatedAt: new Date() },
+          set: {
+            status: "processing",
+            errorCode: null,
+            provider: stt.name,
+            model: stt.model,
+            updatedAt: new Date(),
+          },
         });
       return { rec, meeting: m };
     });
@@ -52,7 +69,10 @@ export class TranscriptionService {
     const work = await mkdtemp(path.join(tmpdir(), "notetaker-stt-"));
     try {
       const file = path.join(work, "audio.m4a");
-      await pipeline(await this.d.storage.openRead(ctx.rec.storageKey!), createWriteStream(file, { mode: 0o600 }));
+      await pipeline(
+        await this.d.storage.openRead(ctx.rec.storageKey!),
+        createWriteStream(file, { mode: 0o600 }),
+      );
       const result = await stt.transcribe({
         filePath: file,
         mimeType: ctx.rec.mimeType ?? "audio/mp4",
@@ -61,7 +81,8 @@ export class TranscriptionService {
         mockScenario: stt.isMock ? mockScenarioFromTitle(ctx.meeting.title) : null,
       });
       const segments = result.segments.filter((s) => s.text.trim().length > 0);
-      if (segments.length === 0) throw new PermanentJobError("transcript_empty", "No speech detected");
+      if (segments.length === 0)
+        throw new PermanentJobError("transcript_empty", "No speech detected");
       const words = countWords(segments);
       const quality = words < this.d.minWords ? "insufficient" : "ok";
 
@@ -97,11 +118,17 @@ export class TranscriptionService {
 
   async markFailed(recordingId: string, code: string): Promise<void> {
     await this.d.db.asSystem((tx) =>
-      tx.update(transcripts).set({ status: "failed", errorCode: code, updatedAt: new Date() }).where(eq(transcripts.recordingId, recordingId)),
+      tx
+        .update(transcripts)
+        .set({ status: "failed", errorCode: code, updatedAt: new Date() })
+        .where(eq(transcripts.recordingId, recordingId)),
     );
   }
 
-  static async latestForMeeting(tx: Parameters<Parameters<Db["asSystem"]>[0]>[0], meetingId: string) {
+  static async latestForMeeting(
+    tx: Parameters<Parameters<Db["asSystem"]>[0]>[0],
+    meetingId: string,
+  ) {
     const [t] = await tx
       .select()
       .from(transcripts)

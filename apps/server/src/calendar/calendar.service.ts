@@ -1,9 +1,21 @@
 import type { CalendarConnection, CalendarProvider, MeetingStatus } from "@notetaker/shared";
 import { and, eq, inArray, isNull, gte, ne } from "drizzle-orm";
 import type { AuditService } from "../audit/audit.service";
-import { CALENDAR_SCOPES, ReauthRequiredError, type IdentityProvider, type OAuthClient } from "../auth/oauth";
+import {
+  CALENDAR_SCOPES,
+  ReauthRequiredError,
+  type IdentityProvider,
+  type OAuthClient,
+} from "../auth/oauth";
 import type { Db, Tx } from "../db/client";
-import { calendarConnections, meetingParticipants, meetings, users, type CalendarConnectionRow, type Meeting } from "../db/schema";
+import {
+  calendarConnections,
+  meetingParticipants,
+  meetings,
+  users,
+  type CalendarConnectionRow,
+  type Meeting,
+} from "../db/schema";
 import type { TokenCipher } from "../lib/crypto";
 import { Errors, PermanentJobError, ProviderError } from "../lib/errors";
 import type { Logger } from "../lib/logger";
@@ -66,7 +78,12 @@ export class CalendarService {
       tx
         .select()
         .from(calendarConnections)
-        .where(and(eq(calendarConnections.userId, userId), ne(calendarConnections.status, "disconnected"))),
+        .where(
+          and(
+            eq(calendarConnections.userId, userId),
+            ne(calendarConnections.status, "disconnected"),
+          ),
+        ),
     );
     return rows.map((r) => this.toDto(r));
   }
@@ -80,7 +97,10 @@ export class CalendarService {
     correlationId?: string,
   ): Promise<CalendarConnection> {
     if (!tokens.refreshToken) {
-      throw Errors.unprocessable("calendar_no_refresh_token", "The provider did not grant offline access. Please try again.");
+      throw Errors.unprocessable(
+        "calendar_no_refresh_token",
+        "The provider did not grant offline access. Please try again.",
+      );
     }
     const aad = this.aad(userId, provider);
     const row = await this.d.db.asUser(userId, async (tx) => {
@@ -92,7 +112,8 @@ export class CalendarService {
         encryptedRefreshToken: this.d.cipher.encrypt(tokens.refreshToken!, aad),
         encryptedAccessToken: this.d.cipher.encrypt(tokens.accessToken, aad),
         accessTokenExpiresAt: tokens.expiresAt,
-        scopes: tokens.scopes.length > 0 ? tokens.scopes : CALENDAR_SCOPES[CALENDAR_TO_IDP[provider]],
+        scopes:
+          tokens.scopes.length > 0 ? tokens.scopes : CALENDAR_SCOPES[CALENDAR_TO_IDP[provider]],
         status: "active" as const,
         lastErrorCode: null,
         updatedAt: this.now(),
@@ -101,7 +122,11 @@ export class CalendarService {
         .insert(calendarConnections)
         .values(values)
         .onConflictDoUpdate({
-          target: [calendarConnections.userId, calendarConnections.provider, calendarConnections.accountSubject],
+          target: [
+            calendarConnections.userId,
+            calendarConnections.provider,
+            calendarConnections.accountSubject,
+          ],
           set: values,
         })
         .returning();
@@ -120,7 +145,12 @@ export class CalendarService {
     return this.toDto(row);
   }
 
-  private async enqueueSync(tx: Tx, connectionId: string, userId: string, reason: string): Promise<void> {
+  private async enqueueSync(
+    tx: Tx,
+    connectionId: string,
+    userId: string,
+    reason: string,
+  ): Promise<void> {
     const bucket = Math.floor(this.now().getTime() / 60_000);
     await this.d.jobs.enqueue(tx, {
       type: "calendar_sync",
@@ -135,10 +165,15 @@ export class CalendarService {
       const [c] = await tx
         .select()
         .from(calendarConnections)
-        .where(and(eq(calendarConnections.id, connectionId), eq(calendarConnections.userId, userId)));
+        .where(
+          and(eq(calendarConnections.id, connectionId), eq(calendarConnections.userId, userId)),
+        );
       if (!c || c.status === "disconnected") throw Errors.notFound("Calendar connection");
       if (c.status === "reconnect_required") {
-        throw Errors.conflict("calendar_reconnect_required", "Calendar access was revoked or expired. Please reconnect.");
+        throw Errors.conflict(
+          "calendar_reconnect_required",
+          "Calendar access was revoked or expired. Please reconnect.",
+        );
       }
       await this.enqueueSync(tx, c.id, userId, "manual");
     });
@@ -150,7 +185,9 @@ export class CalendarService {
       const [c] = await tx
         .select()
         .from(calendarConnections)
-        .where(and(eq(calendarConnections.id, connectionId), eq(calendarConnections.userId, userId)));
+        .where(
+          and(eq(calendarConnections.id, connectionId), eq(calendarConnections.userId, userId)),
+        );
       if (!c || c.status === "disconnected") throw Errors.notFound("Calendar connection");
       await tx
         .update(calendarConnections)
@@ -188,9 +225,14 @@ export class CalendarService {
     const client = this.d.oauth[CALENDAR_TO_IDP[conn.provider]];
     if (client && conn.encryptedRefreshToken) {
       try {
-        await client.revoke(this.d.cipher.decrypt(conn.encryptedRefreshToken, this.aad(userId, conn.provider)));
+        await client.revoke(
+          this.d.cipher.decrypt(conn.encryptedRefreshToken, this.aad(userId, conn.provider)),
+        );
       } catch {
-        this.d.logger.warn({ connectionId }, "token revocation failed (tokens already deleted locally)");
+        this.d.logger.warn(
+          { connectionId },
+          "token revocation failed (tokens already deleted locally)",
+        );
       }
     }
   }
@@ -218,7 +260,11 @@ export class CalendarService {
   // ------------------------------------------------------------------ sync
   private async accessToken(c: CalendarConnectionRow): Promise<string> {
     const aad = this.aad(c.userId, c.provider);
-    if (c.encryptedAccessToken && c.accessTokenExpiresAt && c.accessTokenExpiresAt.getTime() - 60_000 > this.now().getTime()) {
+    if (
+      c.encryptedAccessToken &&
+      c.accessTokenExpiresAt &&
+      c.accessTokenExpiresAt.getTime() - 60_000 > this.now().getTime()
+    ) {
       return this.d.cipher.decrypt(c.encryptedAccessToken, aad);
     }
     if (!c.encryptedRefreshToken) throw new ReauthRequiredError();
@@ -235,7 +281,9 @@ export class CalendarService {
           encryptedAccessToken: this.d.cipher.encrypt(refreshed.accessToken, aad),
           accessTokenExpiresAt: refreshed.expiresAt,
           // Providers may rotate refresh tokens.
-          ...(refreshed.refreshToken ? { encryptedRefreshToken: this.d.cipher.encrypt(refreshed.refreshToken, aad) } : {}),
+          ...(refreshed.refreshToken
+            ? { encryptedRefreshToken: this.d.cipher.encrypt(refreshed.refreshToken, aad) }
+            : {}),
           updatedAt: this.now(),
         })
         .where(eq(calendarConnections.id, c.id)),
@@ -248,12 +296,16 @@ export class CalendarService {
     const [c] = await this.d.db.asSystem((tx) =>
       tx.select().from(calendarConnections).where(eq(calendarConnections.id, connectionId)),
     );
-    if (!c || c.status === "disconnected" || c.status === "reconnect_required") return { upserted: 0, cancelled: 0 };
+    if (!c || c.status === "disconnected" || c.status === "reconnect_required")
+      return { upserted: 0, cancelled: 0 };
     const api = this.d.apis[c.provider];
     if (!api) throw new PermanentJobError("calendar_sync_failed", "Calendar API not configured");
 
     await this.d.db.asSystem((tx) =>
-      tx.update(calendarConnections).set({ syncInProgress: true }).where(eq(calendarConnections.id, c.id)),
+      tx
+        .update(calendarConnections)
+        .set({ syncInProgress: true })
+        .where(eq(calendarConnections.id, c.id)),
     );
     try {
       const now = this.now();
@@ -273,11 +325,18 @@ export class CalendarService {
       } catch (err) {
         if (!(err instanceof CursorExpiredError)) throw err;
         cursor = null;
-        result = await api.listChanges({ accessToken: token, cursor: null, windowStart, windowEnd });
+        result = await api.listChanges({
+          accessToken: token,
+          cursor: null,
+          windowStart,
+          windowEnd,
+        });
       }
       const fullSync = cursor === null;
 
-      const [user] = await this.d.db.asSystem((tx) => tx.select().from(users).where(eq(users.id, c.userId)));
+      const [user] = await this.d.db.asSystem((tx) =>
+        tx.select().from(users).where(eq(users.id, c.userId)),
+      );
       let upserted = 0;
       let cancelled = 0;
       for (const ev of result.events) {
@@ -292,8 +351,14 @@ export class CalendarService {
           .set({
             syncState: {
               cursor: result.nextCursor ?? undefined,
-              windowStart: (fullSync ? windowStart : new Date(state.windowStart ?? windowStart)).toISOString(),
-              windowEnd: (fullSync ? windowEnd : new Date(state.windowEnd ?? windowEnd)).toISOString(),
+              windowStart: (fullSync
+                ? windowStart
+                : new Date(state.windowStart ?? windowStart)
+              ).toISOString(),
+              windowEnd: (fullSync
+                ? windowEnd
+                : new Date(state.windowEnd ?? windowEnd)
+              ).toISOString(),
             },
             status: "active",
             lastSyncedAt: this.now(),
@@ -337,13 +402,23 @@ export class CalendarService {
   async applyEvent(
     c: CalendarConnectionRow,
     ev: NormalizedEvent,
-    user: { id: string; timezone: string; autoRegister: boolean | null; recordingNoticeAcknowledgedAt: Date | null } | null,
+    user: {
+      id: string;
+      timezone: string;
+      autoRegister: boolean | null;
+      recordingNoticeAcknowledgedAt: Date | null;
+    } | null,
   ): Promise<"upserted" | "cancelled" | "skipped"> {
     return this.d.db.asSystem(async (tx) => {
       const [existing] = await tx
         .select()
         .from(meetings)
-        .where(and(eq(meetings.calendarConnectionId, c.id), eq(meetings.providerEventId, ev.providerEventId)))
+        .where(
+          and(
+            eq(meetings.calendarConnectionId, c.id),
+            eq(meetings.providerEventId, ev.providerEventId),
+          ),
+        )
         .for("update");
       if (existing?.deletedAt) return "skipped"; // user deleted it; never resurrect
 
@@ -412,7 +487,9 @@ export class CalendarService {
           meeting = updated!;
           if (status === "cancelled" && existing.registrationSource === null) {
             // Event re-confirmed after a calendar cancellation.
-            meeting = await this.d.meetings.transition(tx, meeting, "scheduled", { source: "calendar" });
+            meeting = await this.d.meetings.transition(tx, meeting, "scheduled", {
+              source: "calendar",
+            });
           }
           if (status === "queued" && timeChanged) {
             // Rescheduled: cancel any created session and schedule a fresh one.
@@ -450,10 +527,16 @@ export class CalendarService {
       ) {
         try {
           await tx.transaction(async (sp) => {
-            await this.d.meetings.registerInTx(sp, meeting, { source: "auto", actor: "system:auto" });
+            await this.d.meetings.registerInTx(sp, meeting, {
+              source: "auto",
+              actor: "system:auto",
+            });
           });
         } catch (err) {
-          this.d.logger.info({ meetingId: meeting.id, code: (err as { code?: string }).code }, "auto-registration skipped");
+          this.d.logger.info(
+            { meetingId: meeting.id, code: (err as { code?: string }).code },
+            "auto-registration skipped",
+          );
         }
       }
       return "upserted";

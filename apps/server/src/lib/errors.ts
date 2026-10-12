@@ -17,7 +17,8 @@ export class AppError extends Error {
 export const Errors = {
   badRequest: (message = "Invalid request", details?: unknown) =>
     new AppError(400, "bad_request", message, details),
-  validation: (details: unknown) => new AppError(400, "validation_error", "Request validation failed", details),
+  validation: (details: unknown) =>
+    new AppError(400, "validation_error", "Request validation failed", details),
   unauthenticated: () => new AppError(401, "unauthenticated", "Authentication required"),
   forbidden: (message = "You do not have permission to perform this action") =>
     new AppError(403, "forbidden", message),
@@ -27,8 +28,10 @@ export const Errors = {
   conflict: (code: string, message: string) => new AppError(409, code, message),
   unprocessable: (code: string, message: string) => new AppError(422, code, message),
   rateLimited: () => new AppError(429, "rate_limited", "Too many requests, please try again later"),
-  notConfigured: (what: string) => new AppError(503, "not_configured", `${what} is not configured on this server`),
-  unavailable: (message = "Service temporarily unavailable") => new AppError(503, "unavailable", message),
+  notConfigured: (what: string) =>
+    new AppError(503, "not_configured", `${what} is not configured on this server`),
+  unavailable: (message = "Service temporarily unavailable") =>
+    new AppError(503, "unavailable", message),
 };
 
 /** Error raised by external providers. `retryable` drives job retry decisions. */

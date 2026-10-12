@@ -13,8 +13,16 @@ beforeEach(() => resetDb());
 describe("durable jobs", () => {
   it("enqueue is idempotent by key", async () => {
     await ctx.c.db.asSystem(async (tx) => {
-      const a = await ctx.c.jobs.enqueue(tx, { type: "calendar_sync", idempotencyKey: "k1", entityId: "x" });
-      const b = await ctx.c.jobs.enqueue(tx, { type: "calendar_sync", idempotencyKey: "k1", entityId: "x" });
+      const a = await ctx.c.jobs.enqueue(tx, {
+        type: "calendar_sync",
+        idempotencyKey: "k1",
+        entityId: "x",
+      });
+      const b = await ctx.c.jobs.enqueue(tx, {
+        type: "calendar_sync",
+        idempotencyKey: "k1",
+        entityId: "x",
+      });
       expect(a.created).toBe(true);
       expect(b.created).toBe(false);
       expect(b.job.id).toBe(a.job.id);
@@ -44,12 +52,23 @@ describe("durable jobs", () => {
     );
     for (let i = 0; i < 3; i++) {
       // Make it due immediately, then run.
-      await ctx.c.db.asSystem((tx) => tx.update(jobs).set({ runAt: new Date(0) }).where(eq(jobs.id, job.job.id)));
+      await ctx.c.db.asSystem((tx) =>
+        tx
+          .update(jobs)
+          .set({ runAt: new Date(0) })
+          .where(eq(jobs.id, job.job.id)),
+      );
       await runner.drain(1);
     }
-    const [row] = await ctx.c.db.asSystem((tx) => tx.select().from(jobs).where(eq(jobs.id, job.job.id)));
+    const [row] = await ctx.c.db.asSystem((tx) =>
+      tx.select().from(jobs).where(eq(jobs.id, job.job.id)),
+    );
     expect(calls).toBe(3);
-    expect(row).toMatchObject({ status: "failed", attempts: 3, lastErrorCode: "calendar_rate_limited" });
+    expect(row).toMatchObject({
+      status: "failed",
+      attempts: 3,
+      lastErrorCode: "calendar_rate_limited",
+    });
     expect(finalFailures).toBe(1);
   });
 
@@ -60,9 +79,14 @@ describe("durable jobs", () => {
   });
 
   it("re-queues jobs abandoned by a crashed worker", async () => {
-    const { job } = await ctx.c.db.asSystem((tx) => ctx.c.jobs.enqueue(tx, { type: "calendar_sync", idempotencyKey: "stale" }));
+    const { job } = await ctx.c.db.asSystem((tx) =>
+      ctx.c.jobs.enqueue(tx, { type: "calendar_sync", idempotencyKey: "stale" }),
+    );
     await ctx.c.db.asSystem((tx) =>
-      tx.update(jobs).set({ status: "running", updatedAt: new Date(Date.now() - 3 * 3600_000) }).where(eq(jobs.id, job.id)),
+      tx
+        .update(jobs)
+        .set({ status: "running", updatedAt: new Date(Date.now() - 3 * 3600_000) })
+        .where(eq(jobs.id, job.id)),
     );
     expect(await ctx.c.db.asSystem((tx) => ctx.c.jobs.reapStale(tx, 90 * 60_000))).toBe(1);
   });
@@ -71,7 +95,9 @@ describe("durable jobs", () => {
 describe("admin operations (FR-15)", () => {
   async function admin() {
     const u = await login(ctx.app, "ops@example.com");
-    await ctx.c.db.asSystem((tx) => tx.update(users).set({ role: "admin" }).where(eq(users.id, u.userId)));
+    await ctx.c.db.asSystem((tx) =>
+      tx.update(users).set({ role: "admin" }).where(eq(users.id, u.userId)),
+    );
     return u;
   }
 
@@ -91,23 +117,41 @@ describe("admin operations (FR-15)", () => {
 
   it("retries a failed job and audits the action", async () => {
     const a = await admin();
-    const { job } = await ctx.c.db.asSystem((tx) => ctx.c.jobs.enqueue(tx, { type: "calendar_sync", idempotencyKey: "dead" }));
-    await ctx.c.db.asSystem((tx) => tx.update(jobs).set({ status: "failed", attempts: 5 }).where(eq(jobs.id, job.id)));
+    const { job } = await ctx.c.db.asSystem((tx) =>
+      ctx.c.jobs.enqueue(tx, { type: "calendar_sync", idempotencyKey: "dead" }),
+    );
+    await ctx.c.db.asSystem((tx) =>
+      tx.update(jobs).set({ status: "failed", attempts: 5 }).where(eq(jobs.id, job.id)),
+    );
     const list = await a.agent.get("/api/v1/admin/jobs?status=failed").expect(200);
     expect(list.body.items.map((j: { id: string }) => j.id)).toContain(job.id);
-    await a.agent.post(`/api/v1/admin/jobs/${job.id}/retry`).set("x-csrf-token", a.csrf).expect(202);
-    const [row] = await ctx.c.db.asSystem((tx) => tx.select().from(jobs).where(eq(jobs.id, job.id)));
+    await a.agent
+      .post(`/api/v1/admin/jobs/${job.id}/retry`)
+      .set("x-csrf-token", a.csrf)
+      .expect(202);
+    const [row] = await ctx.c.db.asSystem((tx) =>
+      tx.select().from(jobs).where(eq(jobs.id, job.id)),
+    );
     expect(row?.status).toBe("pending");
     expect(row!.maxAttempts).toBeGreaterThan(5);
-    await a.agent.post(`/api/v1/admin/jobs/${job.id}/retry`).set("x-csrf-token", a.csrf).expect(409);
-    const audit = await ctx.c.db.asSystem((tx) => tx.select().from(auditEvents).where(eq(auditEvents.action, "admin.job_retried")));
+    await a.agent
+      .post(`/api/v1/admin/jobs/${job.id}/retry`)
+      .set("x-csrf-token", a.csrf)
+      .expect(409);
+    const audit = await ctx.c.db.asSystem((tx) =>
+      tx.select().from(auditEvents).where(eq(auditEvents.action, "admin.job_retried")),
+    );
     expect(audit).toHaveLength(1);
   });
 
   it("audit events cannot be modified by the application role", async () => {
     await login(ctx.app, "x@example.com");
-    await expect(ctx.c.db.asSystem((tx) => tx.update(auditEvents).set({ action: "tampered" }))).rejects.toMatchObject({ cause: { code: "42501" } });
-    await expect(ctx.c.db.asSystem((tx) => tx.delete(auditEvents))).rejects.toMatchObject({ cause: { code: "42501" } });
+    await expect(
+      ctx.c.db.asSystem((tx) => tx.update(auditEvents).set({ action: "tampered" })),
+    ).rejects.toMatchObject({ cause: { code: "42501" } });
+    await expect(ctx.c.db.asSystem((tx) => tx.delete(auditEvents))).rejects.toMatchObject({
+      cause: { code: "42501" },
+    });
   });
 });
 
@@ -120,7 +164,11 @@ describe("health & docs", () => {
     const doc = await st(ctx.app).get("/api/v1/openapi.json").expect(200);
     expect(doc.body.openapi).toBe("3.1.0");
     expect(Object.keys(doc.body.paths)).toEqual(
-      expect.arrayContaining(["/api/v1/meetings", "/api/v1/meetings/{meetingId}/minutes/generate", "/api/v1/webhooks/meeting-provider/{provider}"]),
+      expect.arrayContaining([
+        "/api/v1/meetings",
+        "/api/v1/meetings/{meetingId}/minutes/generate",
+        "/api/v1/webhooks/meeting-provider/{provider}",
+      ]),
     );
     const metrics = await st(ctx.app).get("/metrics").expect(200);
     expect(metrics.text).toMatch(/jobs_processed_total|http_request_duration_seconds/);

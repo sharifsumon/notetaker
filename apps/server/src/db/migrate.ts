@@ -8,7 +8,9 @@ function migrationsFolder(): string {
   if (process.env.MIGRATIONS_DIR) return process.env.MIGRATIONS_DIR;
   const here = path.dirname(fileURLToPath(import.meta.url));
   // src/db -> ../../drizzle ; dist -> ../drizzle
-  return here.endsWith(path.join("src", "db")) ? path.resolve(here, "../../drizzle") : path.resolve(here, "../drizzle");
+  return here.endsWith(path.join("src", "db"))
+    ? path.resolve(here, "../../drizzle")
+    : path.resolve(here, "../drizzle");
 }
 
 /** Runs pending migrations using the migration (owner) connection. */

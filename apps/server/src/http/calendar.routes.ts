@@ -26,7 +26,15 @@ export function calendarRoutes(c: Container, authLimiter: RequestHandler): Route
       tag: "Calendar",
       auth: "user",
       middleware: [requireUser],
-      responses: { 200: { description: "OK", schema: z.object({ items: z.array(CalendarConnectionSchema), available: z.array(z.enum(CALENDAR_PROVIDERS)) }) } },
+      responses: {
+        200: {
+          description: "OK",
+          schema: z.object({
+            items: z.array(CalendarConnectionSchema),
+            available: z.array(z.enum(CALENDAR_PROVIDERS)),
+          }),
+        },
+      },
     },
     async (req) => ({
       items: await c.calendar.list(req.user!.id),
@@ -39,7 +47,8 @@ export function calendarRoutes(c: Container, authLimiter: RequestHandler): Route
     {
       method: "post",
       path: "/calendar-connections/:provider/connect",
-      summary: "Start calendar authorization (separate consent from sign-in). Returns the URL to navigate to.",
+      summary:
+        "Start calendar authorization (separate consent from sign-in). Returns the URL to navigate to.",
       tag: "Calendar",
       auth: "user",
       params: ProviderParam,
@@ -47,9 +56,14 @@ export function calendarRoutes(c: Container, authLimiter: RequestHandler): Route
       responses: { 200: { description: "OK", schema: z.object({ authorizationUrl: z.string() }) } },
     },
     (req, res, { params }) => {
-      if (!c.calendar.isConfigured(params.provider)) throw Errors.notConfigured("This calendar provider");
+      if (!c.calendar.isConfigured(params.provider))
+        throw Errors.notConfigured("This calendar provider");
       const client = c.oauth[CALENDAR_TO_IDP[params.provider]]!;
-      const { st, cookie, challenge } = c.oauthState.create("calendar", params.provider, req.user!.id);
+      const { st, cookie, challenge } = c.oauthState.create(
+        "calendar",
+        params.provider,
+        req.user!.id,
+      );
       res.setHeader("Set-Cookie", oauthCookie(c, cookie));
       return {
         authorizationUrl: client.buildAuthorizationUrl({
@@ -74,7 +88,13 @@ export function calendarRoutes(c: Container, authLimiter: RequestHandler): Route
       tag: "Calendar",
       auth: "user",
       params: ProviderParam,
-      query: z.object({ code: z.string().max(4096).optional(), state: z.string().max(512).optional(), error: z.string().max(200).optional() }).loose(),
+      query: z
+        .object({
+          code: z.string().max(4096).optional(),
+          state: z.string().max(512).optional(),
+          error: z.string().max(200).optional(),
+        })
+        .loose(),
       middleware: [authLimiter],
     },
     async (req, res, { params, query }) => {
@@ -99,13 +119,27 @@ export function calendarRoutes(c: Container, authLimiter: RequestHandler): Route
       if (!client) return done("not_configured");
       try {
         const scopes = CALENDAR_SCOPES[CALENDAR_TO_IDP[params.provider]];
-        const tokens = await client.exchangeCode(query.code, redirectUri(params.provider), st.verifier, scopes);
+        const tokens = await client.exchangeCode(
+          query.code,
+          redirectUri(params.provider),
+          st.verifier,
+          scopes,
+        );
         if (!tokens.idToken) return done("invalid_token");
         const identity = await client.verifyIdToken(tokens.idToken, st.nonce);
-        await c.calendar.saveConnection(req.user.id, params.provider, tokens, { subject: identity.subject, email: identity.email }, req.requestId);
+        await c.calendar.saveConnection(
+          req.user.id,
+          params.provider,
+          tokens,
+          { subject: identity.subject, email: identity.email },
+          req.requestId,
+        );
         return done("connected");
       } catch (err) {
-        req.log.warn({ code: err instanceof ProviderError || err instanceof AppError ? err.code : "error" }, "calendar connect failed");
+        req.log.warn(
+          { code: err instanceof ProviderError || err instanceof AppError ? err.code : "error" },
+          "calendar connect failed",
+        );
         return done(err instanceof AppError ? err.code : "failed");
       }
     },

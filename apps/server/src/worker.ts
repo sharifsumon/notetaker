@@ -28,11 +28,15 @@ export function startWorker(c: Container, redisUrl: string, metricsPort?: number
   const timers: NodeJS.Timeout[] = [];
   const every = (ms: number, name: string, fn: () => Promise<unknown>) => {
     const run = () =>
-      fn().catch((err: Error) => c.logger.error({ task: name, err: err.message }, "periodic task failed"));
+      fn().catch((err: Error) =>
+        c.logger.error({ task: name, err: err.message }, "periodic task failed"),
+      );
     timers.push(setInterval(run, ms));
     setTimeout(run, 2_000);
   };
-  every(c.env.CALENDAR_SYNC_INTERVAL_MINUTES * 60_000, "calendar_sync", () => c.calendar.enqueueDueSyncs());
+  every(c.env.CALENDAR_SYNC_INTERVAL_MINUTES * 60_000, "calendar_sync", () =>
+    c.calendar.enqueueDueSyncs(),
+  );
   every(5 * 60_000, "bot_reconcile", () => c.botService.reconcile());
   every(60_000, "reap_stale_jobs", () => c.db.asSystem((tx) => c.jobs.reapStale(tx, 90 * 60_000)));
   every(60 * 60_000, "retention", () => c.deletion.enqueueRetention());

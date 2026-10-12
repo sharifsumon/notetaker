@@ -74,11 +74,18 @@ export async function login(
   opts: { acknowledge?: boolean } = { acknowledge: true },
 ): Promise<LoggedIn> {
   const agent = supertest.agent(app);
-  await agent.post("/api/v1/auth/dev-login").send({ email, displayName: email.split("@")[0] }).expect(204);
+  await agent
+    .post("/api/v1/auth/dev-login")
+    .send({ email, displayName: email.split("@")[0] })
+    .expect(204);
   const me = await agent.get("/api/v1/me").expect(200);
   const csrf = me.body.csrfToken as string;
   if (opts.acknowledge !== false) {
-    await agent.patch("/api/v1/me/settings").set("x-csrf-token", csrf).send({ acknowledgeRecordingNotice: true }).expect(200);
+    await agent
+      .patch("/api/v1/me/settings")
+      .set("x-csrf-token", csrf)
+      .send({ acknowledgeRecordingNotice: true })
+      .expect(200);
   }
   return { agent, csrf, userId: me.body.id as string };
 }
@@ -86,14 +93,30 @@ export async function login(
 /** Delivers a correctly signed mock-provider webhook. */
 export function sendWebhook(
   ctx: TestContext,
-  payload: { type: string; session_id: string; error_code?: string | null; participant?: { id: string; name: string } | null },
+  payload: {
+    type: string;
+    session_id: string;
+    error_code?: string | null;
+    participant?: { id: string; name: string } | null;
+  },
   opts: { eventId?: string; timestamp?: number; secretOverride?: string } = {},
 ) {
   const eventId = opts.eventId ?? `evt_${Math.random().toString(36).slice(2)}`;
-  const body = JSON.stringify({ event_id: eventId, occurred_at: new Date().toISOString(), error_code: null, ...payload });
+  const body = JSON.stringify({
+    event_id: eventId,
+    occurred_at: new Date().toISOString(),
+    error_code: null,
+    ...payload,
+  });
   const ts = opts.timestamp ?? Math.floor(Date.now() / 1000);
   const signer = opts.secretOverride
-    ? new MockMeetingBotProvider({ webhookSecret: opts.secretOverride, stepMs: 0, ffmpegPath: "ffmpeg", logger: createLogger("silent"), emitWebhooks: false })
+    ? new MockMeetingBotProvider({
+        webhookSecret: opts.secretOverride,
+        stepMs: 0,
+        ffmpegPath: "ffmpeg",
+        logger: createLogger("silent"),
+        emitWebhooks: false,
+      })
     : (ctx.c.bot as MockMeetingBotProvider);
   const headers = signer.sign(eventId, body, ts);
   return supertest(ctx.app).post("/api/v1/webhooks/meeting-provider/mock").set(headers).send(body);
@@ -103,10 +126,20 @@ export function futureIso(minutes: number): string {
   return new Date(Date.now() + minutes * 60_000).toISOString();
 }
 
-export async function registerAdhoc(u: LoggedIn, title: string, startInMinutes = 30, url = "https://meet.google.com/abc-defg-hij") {
+export async function registerAdhoc(
+  u: LoggedIn,
+  title: string,
+  startInMinutes = 30,
+  url = "https://meet.google.com/abc-defg-hij",
+) {
   const res = await u.agent
     .post("/api/v1/meetings/register")
     .set("x-csrf-token", u.csrf)
-    .send({ title, meetingUrl: url, startAt: futureIso(startInMinutes), endAt: futureIso(startInMinutes + 60) });
+    .send({
+      title,
+      meetingUrl: url,
+      startAt: futureIso(startInMinutes),
+      endAt: futureIso(startInMinutes + 60),
+    });
   return res;
 }

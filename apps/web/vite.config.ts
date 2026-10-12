@@ -7,7 +7,12 @@ export default defineConfig({
   server: {
     port: 5173,
     // Same-origin API in development (cookies + CSRF behave as in production behind nginx).
-    proxy: { "/api": { target: process.env.API_PROXY_TARGET ?? "http://localhost:4000", changeOrigin: false } },
+    proxy: {
+      "/api": {
+        target: process.env.API_PROXY_TARGET ?? "http://localhost:4000",
+        changeOrigin: false,
+      },
+    },
   },
   build: {
     sourcemap: true,

@@ -9,7 +9,8 @@ const NAMES: Record<CalendarProvider, string> = {
 };
 
 function ConnectionState({ c }: { c: CalendarConnection }) {
-  if (c.status === "reconnect_required") return <span className="status tone-bad">Reconnect needed</span>;
+  if (c.status === "reconnect_required")
+    return <span className="status tone-bad">Reconnect needed</span>;
   if (c.status === "error") return <span className="status tone-wait">Last sync failed</span>;
   if (c.syncInProgress) return <span className="status tone-wait">Syncing…</span>;
   return <span className="status tone-ok">Connected</span>;
@@ -34,19 +35,27 @@ export function CalendarConnections() {
             <div className="stack" style={{ gap: "0.35rem" }}>
               <strong>{NAMES[p]}</strong>
               {conns.length === 0 && (
-                <span className="small muted">{available ? "Not connected" : "Not available on this server (OAuth not configured)"}</span>
+                <span className="small muted">
+                  {available
+                    ? "Not connected"
+                    : "Not available on this server (OAuth not configured)"}
+                </span>
               )}
               {conns.map((c) => (
                 <div key={c.id} className="row small">
                   <ConnectionState c={c} />
                   <span>{c.accountEmail ?? "Connected account"}</span>
                   <span className="muted">
-                    {c.lastSyncedAt ? `Last synced ${new Date(c.lastSyncedAt).toLocaleString()}` : "Not synced yet"}
+                    {c.lastSyncedAt
+                      ? `Last synced ${new Date(c.lastSyncedAt).toLocaleString()}`
+                      : "Not synced yet"}
                   </span>
                 </div>
               ))}
               {conns.some((c) => c.status === "reconnect_required") && (
-                <Notice tone="bad">Calendar access was revoked or expired. Reconnect to keep meetings in sync.</Notice>
+                <Notice tone="bad">
+                  Calendar access was revoked or expired. Reconnect to keep meetings in sync.
+                </Notice>
               )}
             </div>
             <div className="row">
@@ -56,7 +65,12 @@ export function CalendarConnections() {
                     <button
                       type="button"
                       className="btn btn-sm"
-                      onClick={() => a.sync.mutate(c.id, { onSuccess: () => toast("Sync started"), onError: (e) => toast(errorText(e), "bad") })}
+                      onClick={() =>
+                        a.sync.mutate(c.id, {
+                          onSuccess: () => toast("Sync started"),
+                          onError: (e) => toast(errorText(e), "bad"),
+                        })
+                      }
                       disabled={c.syncInProgress || a.sync.isPending}
                     >
                       <RefreshCw size={15} aria-hidden="true" />
@@ -67,8 +81,14 @@ export function CalendarConnections() {
                     type="button"
                     className="btn btn-sm btn-danger"
                     onClick={() => {
-                      if (window.confirm(`Disconnect ${NAMES[p]}? Tokens are deleted and unrecorded upcoming meetings from it are removed.`)) {
-                        a.disconnect.mutate(c.id, { onSuccess: () => toast(`${NAMES[p]} disconnected`) });
+                      if (
+                        window.confirm(
+                          `Disconnect ${NAMES[p]}? Tokens are deleted and unrecorded upcoming meetings from it are removed.`,
+                        )
+                      ) {
+                        a.disconnect.mutate(c.id, {
+                          onSuccess: () => toast(`${NAMES[p]} disconnected`),
+                        });
                       }
                     }}
                   >
@@ -77,23 +97,26 @@ export function CalendarConnections() {
                   </button>
                 </span>
               ))}
-              {available && (conns.length === 0 || conns.some((c) => c.status === "reconnect_required")) && (
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  onClick={() => a.connect.mutate(p, { onError: (e) => toast(errorText(e), "bad") })}
-                  disabled={a.connect.isPending}
-                >
-                  {conns.length ? "Reconnect" : "Connect"}
-                </button>
-              )}
+              {available &&
+                (conns.length === 0 || conns.some((c) => c.status === "reconnect_required")) && (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() =>
+                      a.connect.mutate(p, { onError: (e) => toast(errorText(e), "bad") })
+                    }
+                    disabled={a.connect.isPending}
+                  >
+                    {conns.length ? "Reconnect" : "Connect"}
+                  </button>
+                )}
             </div>
           </div>
         );
       })}
       <p className="small muted" style={{ marginTop: "0.75rem" }}>
-        Notetaker asks only for read access to your calendar events, to find Meet and Teams links. Connecting a calendar is
-        separate from signing in.
+        Notetaker asks only for read access to your calendar events, to find Meet and Teams links.
+        Connecting a calendar is separate from signing in.
       </p>
     </div>
   );

@@ -9,7 +9,12 @@ import type { JobService } from "../jobs/job.service";
 import type { Metrics } from "../metrics";
 import { effectiveEnd, type MeetingService } from "../meetings/meeting.service";
 import { mockScenarioFromTitle } from "./mock-provider";
-import { normalizeFailureCode, type MeetingBotProvider, type ProviderEvent, type ProviderSessionState } from "./types";
+import {
+  normalizeFailureCode,
+  type MeetingBotProvider,
+  type ProviderEvent,
+  type ProviderSessionState,
+} from "./types";
 
 export interface BotServiceDeps {
   db: Db;
@@ -25,7 +30,8 @@ export interface BotServiceDeps {
   now?: () => Date;
 }
 
-export type EventOutcome = "applied" | "duplicate" | "unknown_session" | "ignored_invalid_transition" | "no_change";
+export type EventOutcome =
+  "applied" | "duplicate" | "unknown_session" | "ignored_invalid_transition" | "no_change";
 
 export class BotService {
   private readonly now: () => Date;
@@ -35,7 +41,8 @@ export class BotService {
   }
 
   private get provider(): MeetingBotProvider {
-    if (!this.d.provider) throw new PermanentJobError("provider_unavailable", "No meeting bot provider configured");
+    if (!this.d.provider)
+      throw new PermanentJobError("provider_unavailable", "No meeting bot provider configured");
     return this.d.provider;
   }
 
@@ -48,9 +55,15 @@ export class BotService {
   async schedule(meetingId: string): Promise<void> {
     const provider = this.provider;
     const loaded = await this.d.db.asSystem(async (tx) => {
-      const [m] = await tx.select().from(meetings).where(and(eq(meetings.id, meetingId), isNull(meetings.deletedAt)));
+      const [m] = await tx
+        .select()
+        .from(meetings)
+        .where(and(eq(meetings.id, meetingId), isNull(meetings.deletedAt)));
       if (!m || m.status !== "queued" || m.providerSessionId) return null;
-      const [u] = await tx.select({ displayName: users.displayName }).from(users).where(eq(users.id, m.userId));
+      const [u] = await tx
+        .select({ displayName: users.displayName })
+        .from(users)
+        .where(eq(users.id, m.userId));
       if (!provider.supportsPlatform(m.platform)) {
         await this.d.meetings.transition(tx, m, "failed", {
           source: "scheduler",
@@ -86,7 +99,13 @@ export class BotService {
       const r = await tx
         .update(meetings)
         .set({ providerSessionId: sessionId, botProvider: provider.name, updatedAt: this.now() })
-        .where(and(eq(meetings.id, m.id), eq(meetings.status, "queued"), isNull(meetings.providerSessionId)))
+        .where(
+          and(
+            eq(meetings.id, m.id),
+            eq(meetings.status, "queued"),
+            isNull(meetings.providerSessionId),
+          ),
+        )
         .returning({ id: meetings.id });
       if (r.length > 0) {
         await this.d.audit.record(tx, {
@@ -134,7 +153,9 @@ export class BotService {
       const [m] = await tx
         .select()
         .from(meetings)
-        .where(and(eq(meetings.botProvider, providerName), eq(meetings.providerSessionId, ev.sessionId)))
+        .where(
+          and(eq(meetings.botProvider, providerName), eq(meetings.providerSessionId, ev.sessionId)),
+        )
         .for("update");
       let outcome: EventOutcome;
       if (!m || m.deletedAt) outcome = "unknown_session";
@@ -145,7 +166,10 @@ export class BotService {
         .set({ processedAt: this.now(), outcome })
         .where(eq(webhookEvents.id, inboxId));
       if (outcome !== "applied") {
-        this.d.logger.info({ provider: providerName, eventType: ev.type, outcome }, "provider event not applied");
+        this.d.logger.info(
+          { provider: providerName, eventType: ev.type, outcome },
+          "provider event not applied",
+        );
       }
       return outcome;
     });
@@ -176,22 +200,34 @@ export class BotService {
     const status = m.status as MeetingStatus;
     switch (ev.type) {
       case "bot.joining":
-        return (await this.tryTransition(tx, m, "joining", null, { substatus: null })) ? "applied" : "ignored_invalid_transition";
+        return (await this.tryTransition(tx, m, "joining", null, { substatus: null }))
+          ? "applied"
+          : "ignored_invalid_transition";
       case "bot.waiting_for_admission": {
         if (status === "joining") {
-          await tx.update(meetings).set({ substatus: "waiting_for_admission", updatedAt: this.now() }).where(eq(meetings.id, m.id));
+          await tx
+            .update(meetings)
+            .set({ substatus: "waiting_for_admission", updatedAt: this.now() })
+            .where(eq(meetings.id, m.id));
           return "applied";
         }
-        return (await this.tryTransition(tx, m, "joining", "waiting_for_admission", { substatus: "waiting_for_admission" }))
+        return (await this.tryTransition(tx, m, "joining", "waiting_for_admission", {
+          substatus: "waiting_for_admission",
+        }))
           ? "applied"
           : "ignored_invalid_transition";
       }
       case "bot.in_call_recording":
-        return (await this.tryTransition(tx, m, "in_progress", null, { substatus: null, actualStartAt: ev.occurredAt }))
+        return (await this.tryTransition(tx, m, "in_progress", null, {
+          substatus: null,
+          actualStartAt: ev.occurredAt,
+        }))
           ? "applied"
           : "ignored_invalid_transition";
       case "bot.call_ended": {
-        const t = await this.tryTransition(tx, m, "recording_processing", null, { actualEndAt: ev.occurredAt });
+        const t = await this.tryTransition(tx, m, "recording_processing", null, {
+          actualEndAt: ev.occurredAt,
+        });
         if (!t) return "ignored_invalid_transition";
         await this.enqueueIngest(tx, t);
         return "applied";
@@ -199,7 +235,10 @@ export class BotService {
       case "bot.recording_ready": {
         let current = m;
         if (status === "in_progress") {
-          current = (await this.tryTransition(tx, m, "recording_processing", null, { actualEndAt: ev.occurredAt })) ?? m;
+          current =
+            (await this.tryTransition(tx, m, "recording_processing", null, {
+              actualEndAt: ev.occurredAt,
+            })) ?? m;
         }
         if (current.status !== "recording_processing") return "ignored_invalid_transition";
         await this.enqueueIngest(tx, current);
@@ -207,7 +246,10 @@ export class BotService {
       }
       case "bot.failed": {
         const code = normalizeFailureCode(ev.errorCode);
-        const t = await this.tryTransition(tx, m, "failed", code, { failureCode: code, substatus: null });
+        const t = await this.tryTransition(tx, m, "failed", code, {
+          failureCode: code,
+          substatus: null,
+        });
         if (!t) return "ignored_invalid_transition";
         this.d.metrics.botJoinFailures.inc({ provider: m.botProvider ?? "unknown", code });
         return "applied";
@@ -316,7 +358,10 @@ export class BotService {
         await this.d.meetings.transition(tx, m, "failed", {
           source: "scheduler",
           reasonCode: code,
-          patch: { failureCode: code === "provider_unavailable" ? "provider_unavailable" : "bot_join_failed" },
+          patch: {
+            failureCode:
+              code === "provider_unavailable" ? "provider_unavailable" : "bot_join_failed",
+          },
         });
       }
     });

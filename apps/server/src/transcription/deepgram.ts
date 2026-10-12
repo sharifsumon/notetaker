@@ -58,11 +58,20 @@ export class DeepgramTranscriptionProvider implements TranscriptionProvider {
       };
       res = await this.fetchImpl(`${this.baseUrl}/v1/listen?${params.toString()}`, init);
     } catch (err) {
-      throw new ProviderError("transcription_failed", `Deepgram request failed: ${(err as Error).name}`, true);
+      throw new ProviderError(
+        "transcription_failed",
+        `Deepgram request failed: ${(err as Error).name}`,
+        true,
+      );
     }
     if (!res.ok) {
       const retryable = res.status === 429 || res.status >= 500;
-      throw new ProviderError("transcription_failed", `Deepgram HTTP ${res.status}`, retryable, res.status);
+      throw new ProviderError(
+        "transcription_failed",
+        `Deepgram HTTP ${res.status}`,
+        retryable,
+        res.status,
+      );
     }
     const body = (await res.json()) as DeepgramResponse;
     return this.normalize(body);
@@ -85,6 +94,10 @@ export class DeepgramTranscriptionProvider implements TranscriptionProvider {
       const text = channel?.alternatives?.[0]?.transcript?.trim() ?? "";
       segments = text ? [{ startMs: null, endMs: null, speaker: null, text }] : [];
     }
-    return { language: channel?.detected_language ?? null, segments, raw: { utteranceCount: utterances.length } };
+    return {
+      language: channel?.detected_language ?? null,
+      segments,
+      raw: { utteranceCount: utterances.length },
+    };
   }
 }

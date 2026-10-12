@@ -1,4 +1,10 @@
-import express, { Router, type Express, type NextFunction, type Request, type Response } from "express";
+import express, {
+  Router,
+  type Express,
+  type NextFunction,
+  type Request,
+  type Response,
+} from "express";
 import helmet from "helmet";
 import type { Redis } from "ioredis";
 import { RedisStore, type RedisReply } from "rate-limit-redis";
@@ -64,11 +70,20 @@ export function createApp(c: Container, opts: AppOptions = {}): Express {
   app.get("/api/v1/health/ready", async (_req, res) => {
     const checks: Record<string, boolean> = {};
     await Promise.all([
-      c.db.ping().then(() => (checks.database = true), () => (checks.database = false)),
+      c.db.ping().then(
+        () => (checks.database = true),
+        () => (checks.database = false),
+      ),
       opts.redis
-        ? opts.redis.ping().then(() => (checks.redis = true), () => (checks.redis = false))
+        ? opts.redis.ping().then(
+            () => (checks.redis = true),
+            () => (checks.redis = false),
+          )
         : Promise.resolve((checks.redis = true)),
-      c.storage.healthCheck().then(() => (checks.storage = true), () => (checks.storage = false)),
+      c.storage.healthCheck().then(
+        () => (checks.storage = true),
+        () => (checks.storage = false),
+      ),
     ]);
     const ok = Object.values(checks).every(Boolean);
     res.status(ok ? 200 : 503).json({ status: ok ? "ok" : "degraded", checks });
@@ -84,7 +99,11 @@ export function createApp(c: Container, opts: AppOptions = {}): Express {
     }
     try {
       const rows = await c.db.asSystem((tx) =>
-        tx.select({ status: jobs.status, n: count() }).from(jobs).where(sql`${jobs.status} in ('pending','queued','running','failed')`).groupBy(jobs.status),
+        tx
+          .select({ status: jobs.status, n: count() })
+          .from(jobs)
+          .where(sql`${jobs.status} in ('pending','queued','running','failed')`)
+          .groupBy(jobs.status),
       );
       c.metrics.jobQueueDepth.reset();
       for (const r of rows) c.metrics.jobQueueDepth.set({ status: r.status }, r.n);
@@ -103,11 +122,26 @@ export function createApp(c: Container, opts: AppOptions = {}): Express {
             opts.redis!.call(command, ...args) as Promise<RedisReply>,
         })
     : () => undefined;
-  const authLimiter = limiter({ windowMs: 60_000, limit: 20, keyBy: "ip", name: "auth" }, store("auth"));
-  const registration = limiter({ windowMs: 60_000, limit: 30, keyBy: "user", name: "reg" }, store("reg"));
-  const generation = limiter({ windowMs: 60_000, limit: 10, keyBy: "user", name: "gen" }, store("gen"));
-  const download = limiter({ windowMs: 60_000, limit: 120, keyBy: "user", name: "dl" }, store("dl"));
-  const admin = limiter({ windowMs: 60_000, limit: 60, keyBy: "user", name: "admin" }, store("admin"));
+  const authLimiter = limiter(
+    { windowMs: 60_000, limit: 20, keyBy: "ip", name: "auth" },
+    store("auth"),
+  );
+  const registration = limiter(
+    { windowMs: 60_000, limit: 30, keyBy: "user", name: "reg" },
+    store("reg"),
+  );
+  const generation = limiter(
+    { windowMs: 60_000, limit: 10, keyBy: "user", name: "gen" },
+    store("gen"),
+  );
+  const download = limiter(
+    { windowMs: 60_000, limit: 120, keyBy: "user", name: "dl" },
+    store("dl"),
+  );
+  const admin = limiter(
+    { windowMs: 60_000, limit: 60, keyBy: "user", name: "admin" },
+    store("admin"),
+  );
   const webhook = limiter({ windowMs: 60_000, limit: 1200, keyBy: "ip", name: "wh" }, store("wh"));
 
   const api = Router();
@@ -128,7 +162,10 @@ export function createApp(c: Container, opts: AppOptions = {}): Express {
       "/api/docs",
       (_req: Request, res: Response, next: NextFunction) => {
         // Swagger UI needs inline assets; relax CSP for this dev-only page.
-        res.setHeader("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:");
+        res.setHeader(
+          "Content-Security-Policy",
+          "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; img-src 'self' data:",
+        );
         next();
       },
       swaggerUi.serve,

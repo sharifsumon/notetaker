@@ -1,4 +1,9 @@
-import type { ActionItem, ChunkNotes, MinutesModelOutput, SummaryModelOutput } from "@notetaker/shared";
+import type {
+  ActionItem,
+  ChunkNotes,
+  MinutesModelOutput,
+  SummaryModelOutput,
+} from "@notetaker/shared";
 import type { LlmProvider, StructuredRequest } from "./types";
 
 /**
@@ -11,7 +16,9 @@ export class MockLlmProvider implements LlmProvider {
   readonly model = "mock-extractive-v1";
   readonly isMock = true;
 
-  async generateStructured<T>(req: StructuredRequest<T>): Promise<{ data: T; usage: { inputTokens: number; outputTokens: number } }> {
+  async generateStructured<T>(
+    req: StructuredRequest<T>,
+  ): Promise<{ data: T; usage: { inputTokens: number; outputTokens: number } }> {
     const sentences = splitSentences(req.sourceText);
     const x = extract(sentences);
     let data: unknown;
@@ -21,14 +28,21 @@ export class MockLlmProvider implements LlmProvider {
         keyPoints: x.other.slice(0, 5),
         decisions: x.decisions,
         risks: x.risks,
-        nextSteps: [...x.actions.map((a) => a.task), ...(x.nextMeeting ? [`Next meeting: ${x.nextMeeting}`] : [])],
-        uncertainties: x.actions.some((a) => !a.owner) ? ["Some action items have no named owner."] : [],
+        nextSteps: [
+          ...x.actions.map((a) => a.task),
+          ...(x.nextMeeting ? [`Next meeting: ${x.nextMeeting}`] : []),
+        ],
+        uncertainties: x.actions.some((a) => !a.owner)
+          ? ["Some action items have no named owner."]
+          : [],
       };
       data = out;
     } else if (req.task === "minutes") {
       const out: MinutesModelOutput = {
         objective: x.purpose,
-        discussionPoints: x.other.slice(0, 6).map((s, i) => ({ topic: `Point ${i + 1}`, summary: s })),
+        discussionPoints: x.other
+          .slice(0, 6)
+          .map((s, i) => ({ topic: `Point ${i + 1}`, summary: s })),
         decisions: x.decisions.map((d) => ({ decision: d, evidence: d.slice(0, 200) })),
         proposals: x.proposals.map((p) => ({ proposal: p, evidence: p.slice(0, 200) })),
         actionItems: x.actions,
@@ -40,7 +54,9 @@ export class MockLlmProvider implements LlmProvider {
       data = out;
     } else {
       const out: ChunkNotes = {
-        discussionPoints: x.other.slice(0, 6).map((s, i) => ({ topic: `Point ${i + 1}`, summary: s })),
+        discussionPoints: x.other
+          .slice(0, 6)
+          .map((s, i) => ({ topic: `Point ${i + 1}`, summary: s })),
         decisions: x.decisions.map((d) => ({ decision: d, evidence: d.slice(0, 200) })),
         proposals: x.proposals.map((p) => ({ proposal: p, evidence: p.slice(0, 200) })),
         actionItems: x.actions,
@@ -51,7 +67,10 @@ export class MockLlmProvider implements LlmProvider {
       data = out;
     }
     const parsed = req.schema.parse(data);
-    return { data: parsed, usage: { inputTokens: Math.ceil(req.user.length / 4), outputTokens: 0 } };
+    return {
+      data: parsed,
+      usage: { inputTokens: Math.ceil(req.user.length / 4), outputTokens: 0 },
+    };
   }
 }
 
@@ -65,7 +84,8 @@ function splitSentences(text: string): string[] {
     .slice(0, 2000);
 }
 
-const DAYS = "Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|tomorrow|next week|end of (?:the )?(?:day|week|month)";
+const DAYS =
+  "Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|tomorrow|next week|end of (?:the )?(?:day|week|month)";
 
 function extract(sentences: string[]) {
   const decisions: string[] = [];
@@ -117,8 +137,13 @@ function extract(sentences: string[]) {
 }
 
 function actionFrom(rest: string, owner: string | null, sentence: string): ActionItem {
-  const due = new RegExp(`\\bby (${DAYS})\\b`, "i").exec(rest) ?? new RegExp(`\\b(${DAYS})\\b`, "i").exec(rest);
-  const task = rest.replace(new RegExp(`\\s*\\bby (${DAYS})\\b`, "i"), "").replace(/\s*this week$/i, "").trim();
+  const due =
+    new RegExp(`\\bby (${DAYS})\\b`, "i").exec(rest) ??
+    new RegExp(`\\b(${DAYS})\\b`, "i").exec(rest);
+  const task = rest
+    .replace(new RegExp(`\\s*\\bby (${DAYS})\\b`, "i"), "")
+    .replace(/\s*this week$/i, "")
+    .trim();
   return {
     task: capitalize(task).slice(0, 900) || "Unspecified task",
     owner,

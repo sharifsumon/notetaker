@@ -29,7 +29,13 @@ export const keys = {
 };
 
 const POLL_MS = 5000;
-const ACTIVE_STATUSES = new Set(["queued", "joining", "in_progress", "recording_processing", "deletion_pending"]);
+const ACTIVE_STATUSES = new Set([
+  "queued",
+  "joining",
+  "in_progress",
+  "recording_processing",
+  "deletion_pending",
+]);
 
 export function useMe() {
   return useQuery({
@@ -55,14 +61,16 @@ export function useMe() {
 export function useAuthConfig() {
   return useQuery({
     queryKey: keys.authConfig,
-    queryFn: () => api<{ googleAuth: boolean; microsoftAuth: boolean; devLogin: boolean }>("/auth/config"),
+    queryFn: () =>
+      api<{ googleAuth: boolean; microsoftAuth: boolean; devLogin: boolean }>("/auth/config"),
     staleTime: Infinity,
   });
 }
 
 function toQueryString(q: Partial<MeetingListQuery>): string {
   const p = new URLSearchParams();
-  for (const [k, v] of Object.entries(q)) if (v !== undefined && v !== "" && v !== null) p.set(k, String(v));
+  for (const [k, v] of Object.entries(q))
+    if (v !== undefined && v !== "" && v !== null) p.set(k, String(v));
   const s = p.toString();
   return s ? `?${s}` : "";
 }
@@ -81,7 +89,8 @@ export function useMeetings(q: Partial<MeetingListQuery>) {
     queryKey: keys.meetings(q),
     queryFn: ({ signal }) => api<MeetingListResponse>(`/meetings${toQueryString(q)}`, { signal }),
     placeholderData: (prev) => prev,
-    refetchInterval: (query: Query<MeetingListResponse>) => (listNeedsPolling(query.state.data) ? POLL_MS : false),
+    refetchInterval: (query: Query<MeetingListResponse>) =>
+      listNeedsPolling(query.state.data) ? POLL_MS : false,
   });
 }
 
@@ -92,7 +101,8 @@ export function useMeeting(id: string) {
     refetchInterval: (query: Query<MeetingDetail>) => {
       const m = query.state.data;
       if (!m) return false;
-      return ACTIVE_STATUSES.has(m.status) || [m.recording, m.transcript, m.summary, m.minutes].includes("processing")
+      return ACTIVE_STATUSES.has(m.status) ||
+        [m.recording, m.transcript, m.summary, m.minutes].includes("processing")
         ? POLL_MS
         : false;
     },
@@ -100,7 +110,11 @@ export function useMeeting(id: string) {
 }
 
 export function useRecording(id: string, enabled: boolean) {
-  return useQuery({ queryKey: keys.recording(id), queryFn: () => api<Recording>(`/meetings/${id}/recording`), enabled });
+  return useQuery({
+    queryKey: keys.recording(id),
+    queryFn: () => api<Recording>(`/meetings/${id}/recording`),
+    enabled,
+  });
 }
 
 export function useTranscript(id: string, enabled: boolean) {
@@ -139,9 +153,14 @@ export function useGenerate(id: string, type: "summary" | "minutes") {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (regenerate: boolean) =>
-      api<{ created: boolean }>(`/meetings/${id}/${type}/generate`, { method: "POST", body: { regenerate } }),
+      api<{ created: boolean }>(`/meetings/${id}/${type}/generate`, {
+        method: "POST",
+        body: { regenerate },
+      }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: type === "summary" ? keys.summary(id) : keys.minutes(id) });
+      void qc.invalidateQueries({
+        queryKey: type === "summary" ? keys.summary(id) : keys.minutes(id),
+      });
       void qc.invalidateQueries({ queryKey: keys.meeting(id) });
     },
   });
@@ -155,8 +174,11 @@ export function useMeetingAction() {
   };
   return {
     register: useMutation({
-      mutationFn: (body: { meetingId: string } | { title: string; meetingUrl: string; startAt: string; endAt?: string }) =>
-        api<MeetingDetail>("/meetings/register", { method: "POST", body }),
+      mutationFn: (
+        body:
+          | { meetingId: string }
+          | { title: string; meetingUrl: string; startAt: string; endAt?: string },
+      ) => api<MeetingDetail>("/meetings/register", { method: "POST", body }),
       onSuccess: (m) => refresh(m.id),
     }),
     cancel: useMutation({
@@ -184,7 +206,8 @@ export function useUpdateSettings() {
 export function useCalendars() {
   return useQuery({
     queryKey: keys.calendars,
-    queryFn: () => api<{ items: CalendarConnection[]; available: CalendarProvider[] }>("/calendar-connections"),
+    queryFn: () =>
+      api<{ items: CalendarConnection[]; available: CalendarProvider[] }>("/calendar-connections"),
     refetchInterval: (q) => (q.state.data?.items.some((c) => c.syncInProgress) ? POLL_MS : false),
   });
 }
@@ -195,7 +218,9 @@ export function useCalendarActions() {
   return {
     connect: useMutation({
       mutationFn: (provider: CalendarProvider) =>
-        api<{ authorizationUrl: string }>(`/calendar-connections/${provider}/connect`, { method: "POST" }),
+        api<{ authorizationUrl: string }>(`/calendar-connections/${provider}/connect`, {
+          method: "POST",
+        }),
       onSuccess: (r) => {
         window.location.assign(r.authorizationUrl);
       },
@@ -208,20 +233,26 @@ export function useCalendarActions() {
       },
     }),
     sync: useMutation({
-      mutationFn: (id: string) => api<{ status: string }>(`/calendar-connections/${id}/sync`, { method: "POST" }),
+      mutationFn: (id: string) =>
+        api<{ status: string }>(`/calendar-connections/${id}/sync`, { method: "POST" }),
       onSuccess: refresh,
     }),
   };
 }
 
 export function useAdminOverview(enabled: boolean) {
-  return useQuery({ queryKey: [...keys.admin, "overview"], queryFn: () => api<Record<string, unknown>>("/admin/overview"), enabled });
+  return useQuery({
+    queryKey: [...keys.admin, "overview"],
+    queryFn: () => api<Record<string, unknown>>("/admin/overview"),
+    enabled,
+  });
 }
 
 export function useAdminJobs(status: string, enabled: boolean) {
   return useQuery({
     queryKey: [...keys.admin, "jobs", status],
-    queryFn: () => api<{ items: AdminJob[]; total: number }>(`/admin/jobs?status=${status}&pageSize=50`),
+    queryFn: () =>
+      api<{ items: AdminJob[]; total: number }>(`/admin/jobs?status=${status}&pageSize=50`),
     enabled,
   });
 }
@@ -229,7 +260,8 @@ export function useAdminJobs(status: string, enabled: boolean) {
 export function useRetryJob() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => api<{ status: string }>(`/admin/jobs/${id}/retry`, { method: "POST" }),
+    mutationFn: (id: string) =>
+      api<{ status: string }>(`/admin/jobs/${id}/retry`, { method: "POST" }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.admin }),
   });
 }
@@ -237,7 +269,8 @@ export function useRetryJob() {
 export function useSignOut() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (all: boolean) => api<void>(all ? "/auth/logout-all" : "/auth/logout", { method: "POST" }),
+    mutationFn: (all: boolean) =>
+      api<void>(all ? "/auth/logout-all" : "/auth/logout", { method: "POST" }),
     onSettled: () => {
       setCsrfToken(null);
       qc.clear();

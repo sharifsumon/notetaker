@@ -30,7 +30,12 @@ export interface IngestDeps {
   maxDurationSeconds: number;
 }
 
-const INGEST_FAILURES = new Set(["recording_unavailable", "recording_invalid", "storage_error", "recording_too_large"]);
+const INGEST_FAILURES = new Set([
+  "recording_unavailable",
+  "recording_invalid",
+  "storage_error",
+  "recording_too_large",
+]);
 
 class SizeLimit extends Transform {
   private seen = 0;
@@ -38,9 +43,14 @@ class SizeLimit extends Transform {
   constructor(private readonly max: number) {
     super();
   }
-  override _transform(chunk: Buffer, _enc: BufferEncoding, cb: (err?: Error | null, data?: Buffer) => void) {
+  override _transform(
+    chunk: Buffer,
+    _enc: BufferEncoding,
+    cb: (err?: Error | null, data?: Buffer) => void,
+  ) {
     this.seen += chunk.length;
-    if (this.seen > this.max) return cb(new PermanentJobError("recording_too_large", "Recording exceeds size limit"));
+    if (this.seen > this.max)
+      return cb(new PermanentJobError("recording_too_large", "Recording exceeds size limit"));
     this.hash.update(chunk);
     cb(null, chunk);
   }
@@ -56,13 +66,18 @@ export class RecordingIngestService {
 
   async ingest(meetingId: string): Promise<void> {
     const provider = this.d.provider;
-    if (!provider) throw new PermanentJobError("provider_unavailable", "No meeting bot provider configured");
+    if (!provider)
+      throw new PermanentJobError("provider_unavailable", "No meeting bot provider configured");
 
     const m = await this.d.db.asSystem(async (tx) => {
       let [row] = await tx.select().from(meetings).where(eq(meetings.id, meetingId)).for("update");
       if (!row || row.deletedAt || row.status === "deletion_pending") return null;
       if (row.status === "completed") return null; // already ingested
-      if (row.status === "failed" && row.providerSessionId && INGEST_FAILURES.has(row.failureCode ?? "")) {
+      if (
+        row.status === "failed" &&
+        row.providerSessionId &&
+        INGEST_FAILURES.has(row.failureCode ?? "")
+      ) {
         // Operator retry of a failed ingestion.
         row = await this.d.meetings.transition(tx, row, "recording_processing", {
           source: "retry",
@@ -72,15 +87,27 @@ export class RecordingIngestService {
       if (row.status !== "recording_processing") return null;
       await tx
         .insert(recordings)
-        .values({ userId: row.userId, meetingId: row.id, storageProvider: this.d.storage.name, status: "processing" })
-        .onConflictDoUpdate({ target: recordings.meetingId, set: { status: "processing", errorCode: null, updatedAt: new Date() } });
+        .values({
+          userId: row.userId,
+          meetingId: row.id,
+          storageProvider: this.d.storage.name,
+          status: "processing",
+        })
+        .onConflictDoUpdate({
+          target: recordings.meetingId,
+          set: { status: "processing", errorCode: null, updatedAt: new Date() },
+        });
       return row;
     });
     if (!m || !m.providerSessionId) return;
 
     const asset = await provider.getRecording(m.providerSessionId);
     if (asset.status === "processing") {
-      throw new ProviderError("recording_not_ready", "Provider is still processing the recording", true);
+      throw new ProviderError(
+        "recording_not_ready",
+        "Provider is still processing the recording",
+        true,
+      );
     }
     if (asset.status === "unavailable") {
       await this.fail(m, "recording_unavailable");
@@ -95,7 +122,8 @@ export class RecordingIngestService {
       const sourceChecksum = limiter.hash.digest("hex");
 
       const probe = await this.d.media.probe(raw);
-      if (!probe.hasAudio) throw new PermanentJobError("recording_invalid", "Recording has no audio stream");
+      if (!probe.hasAudio)
+        throw new PermanentJobError("recording_invalid", "Recording has no audio stream");
       if (probe.durationSeconds !== null && probe.durationSeconds > this.d.maxDurationSeconds) {
         throw new PermanentJobError("recording_too_large", "Recording exceeds duration limit");
       }
@@ -107,7 +135,8 @@ export class RecordingIngestService {
         throw new PermanentJobError("recording_invalid", "Audio could not be decoded");
       }
       const outProbe = await this.d.media.probe(normalized);
-      if (!outProbe.hasAudio) throw new PermanentJobError("recording_invalid", "Normalized audio invalid");
+      if (!outProbe.hasAudio)
+        throw new PermanentJobError("recording_invalid", "Normalized audio invalid");
       const size = (await stat(normalized)).size;
       const checksum = await sha256File(normalized);
 
@@ -115,11 +144,19 @@ export class RecordingIngestService {
       try {
         await this.d.storage.putFile(key, normalized, "audio/mp4");
       } catch (err) {
-        throw new ProviderError("storage_error", `Storage write failed: ${(err as Error).name}`, true);
+        throw new ProviderError(
+          "storage_error",
+          `Storage write failed: ${(err as Error).name}`,
+          true,
+        );
       }
 
       await this.d.db.asSystem(async (tx) => {
-        const [current] = await tx.select().from(meetings).where(eq(meetings.id, m.id)).for("update");
+        const [current] = await tx
+          .select()
+          .from(meetings)
+          .where(eq(meetings.id, m.id))
+          .for("update");
         const [existing] = await tx.select().from(recordings).where(eq(recordings.meetingId, m.id));
         if (!current || current.status !== "recording_processing") {
           // Deleted or changed concurrently: do not leave an orphaned object behind.
@@ -136,7 +173,8 @@ export class RecordingIngestService {
             storageKey: key,
             mimeType: "audio/mp4",
             fileSizeBytes: size,
-            durationSeconds: outProbe.durationSeconds !== null ? Math.round(outProbe.durationSeconds) : null,
+            durationSeconds:
+              outProbe.durationSeconds !== null ? Math.round(outProbe.durationSeconds) : null,
             checksumSha256: checksum,
             status: "ready",
             errorCode: null,

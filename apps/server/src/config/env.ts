@@ -18,6 +18,8 @@ const EnvSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: int(4000, 1, 65535),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+  /** "pretty" needs the pino-pretty dev dependency (local development only). */
+  LOG_FORMAT: z.enum(["json", "pretty"]).default("json"),
   TRUST_PROXY: int(0, 0, 10),
   /** Public origin of the web app. The API is served under `${PUBLIC_URL}/api`. */
   PUBLIC_URL: z.url().default("http://localhost:5173"),
@@ -135,17 +137,26 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
 
   // Production safety rails: never fake recordings/AI output, never allow dev login.
   if (env.NODE_ENV === "production") {
-    if (env.MEETING_BOT_PROVIDER === "mock") problems.push("MEETING_BOT_PROVIDER=mock is not allowed in production");
-    if (env.STT_PROVIDER === "mock") problems.push("STT_PROVIDER=mock is not allowed in production");
-    if (env.LLM_PROVIDER === "mock") problems.push("LLM_PROVIDER=mock is not allowed in production");
-    if (env.AUTH_DEV_LOGIN_ENABLED) problems.push("AUTH_DEV_LOGIN_ENABLED is not allowed in production");
+    if (env.MEETING_BOT_PROVIDER === "mock")
+      problems.push("MEETING_BOT_PROVIDER=mock is not allowed in production");
+    if (env.STT_PROVIDER === "mock")
+      problems.push("STT_PROVIDER=mock is not allowed in production");
+    if (env.LLM_PROVIDER === "mock")
+      problems.push("LLM_PROVIDER=mock is not allowed in production");
+    if (env.AUTH_DEV_LOGIN_ENABLED)
+      problems.push("AUTH_DEV_LOGIN_ENABLED is not allowed in production");
     if (!env.COOKIE_SECURE) problems.push("COOKIE_SECURE must be true in production");
-    if (!env.PUBLIC_URL.startsWith("https://")) problems.push("PUBLIC_URL must use https in production");
-    if (env.SESSION_SECRET.includes("change-me")) problems.push("SESSION_SECRET must be replaced in production");
-    if (env.TOKEN_ENCRYPTION_KEYS.includes("REPLACE")) problems.push("TOKEN_ENCRYPTION_KEYS must be replaced in production");
+    if (!env.PUBLIC_URL.startsWith("https://"))
+      problems.push("PUBLIC_URL must use https in production");
+    if (env.SESSION_SECRET.includes("change-me"))
+      problems.push("SESSION_SECRET must be replaced in production");
+    if (env.TOKEN_ENCRYPTION_KEYS.includes("REPLACE"))
+      problems.push("TOKEN_ENCRYPTION_KEYS must be replaced in production");
   }
   if (problems.length > 0) {
-    throw new ConfigError(`Invalid environment configuration:\n${problems.map((p) => `  - ${p}`).join("\n")}`);
+    throw new ConfigError(
+      `Invalid environment configuration:\n${problems.map((p) => `  - ${p}`).join("\n")}`,
+    );
   }
   return env;
 }

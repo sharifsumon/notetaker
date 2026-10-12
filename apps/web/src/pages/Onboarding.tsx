@@ -12,7 +12,10 @@ export function OnboardingPage() {
       <div className="page-head">
         <div>
           <h1>Set up recording</h1>
-          <p>Two steps: connect a calendar, then choose how recording should work. You can change both later in Settings.</p>
+          <p>
+            Two steps: connect a calendar, then choose how recording should work. You can change
+            both later in Settings.
+          </p>
         </div>
         <button
           type="button"

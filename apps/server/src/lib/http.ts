@@ -55,7 +55,11 @@ function parse<T>(schema: ZodType<T> | undefined, value: unknown): T {
  * Registers a route with schema validation of params/query/body (BRD 8.3) and records
  * it for the OpenAPI spec. Handlers receive already-validated input.
  */
-export function route<P extends ZodType = ZodType, Q extends ZodType = ZodType, B extends ZodType = ZodType>(
+export function route<
+  P extends ZodType = ZodType,
+  Q extends ZodType = ZodType,
+  B extends ZodType = ZodType,
+>(
   router: Router,
   def: RouteDef<P, Q, B>,
   handler: (

@@ -1,7 +1,12 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { ReauthRequiredError, type OAuthClient } from "../src/auth/oauth";
-import { CursorExpiredError, type CalendarApi, type ChangesResult, type NormalizedEvent } from "../src/calendar/types";
+import {
+  CursorExpiredError,
+  type CalendarApi,
+  type ChangesResult,
+  type NormalizedEvent,
+} from "../src/calendar/types";
 import { calendarConnections, jobs, meetingParticipants, meetings, users } from "../src/db/schema";
 import { detectMeetingUrl } from "@notetaker/shared";
 import { createTestContext, login, resetDb } from "./helpers";
@@ -28,7 +33,10 @@ const fakeOAuth = {
 } as unknown as OAuthClient;
 
 const api = new FakeCalendarApi();
-const ctx = createTestContext({}, { calendarApis: { google_calendar: api }, oauth: { google: fakeOAuth } });
+const ctx = createTestContext(
+  {},
+  { calendarApis: { google_calendar: api }, oauth: { google: fakeOAuth } },
+);
 afterAll(() => ctx.close());
 
 const hours = (h: number) => new Date(Date.now() + h * 3600_000);
@@ -42,7 +50,9 @@ function ev(id: string, over: Partial<NormalizedEvent> = {}): NormalizedEvent {
     end: hours(25),
     isAllDay: false,
     meeting: detectMeetingUrl("https://meet.google.com/abc-defg-hij"),
-    attendees: [{ key: "priya@example.com", name: "Priya", email: "priya@example.com", type: "organizer" }],
+    attendees: [
+      { key: "priya@example.com", name: "Priya", email: "priya@example.com", type: "organizer" },
+    ],
     ...over,
   };
 }
@@ -53,7 +63,11 @@ async function setup(autoRegister = false) {
   api.calls = [];
   const u = await login(ctx.app, "cal@example.com");
   if (autoRegister) {
-    await u.agent.patch("/api/v1/me/settings").set("x-csrf-token", u.csrf).send({ autoRegister: true }).expect(200);
+    await u.agent
+      .patch("/api/v1/me/settings")
+      .set("x-csrf-token", u.csrf)
+      .send({ autoRegister: true })
+      .expect(200);
   }
   // Store a connection with a valid (not expiring) access token so no refresh is needed.
   const [conn] = await ctx.c.db.asSystem((tx) =>
@@ -64,8 +78,14 @@ async function setup(autoRegister = false) {
         provider: "google_calendar",
         accountSubject: "g-123",
         accountEmail: "cal@example.com",
-        encryptedRefreshToken: ctx.c.cipher.encrypt("refresh", `calendar:${u.userId}:google_calendar`),
-        encryptedAccessToken: ctx.c.cipher.encrypt("access", `calendar:${u.userId}:google_calendar`),
+        encryptedRefreshToken: ctx.c.cipher.encrypt(
+          "refresh",
+          `calendar:${u.userId}:google_calendar`,
+        ),
+        encryptedAccessToken: ctx.c.cipher.encrypt(
+          "access",
+          `calendar:${u.userId}:google_calendar`,
+        ),
         accessTokenExpiresAt: hours(1),
         status: "active",
       })
@@ -88,7 +108,10 @@ describe("calendar sync (FR-02)", () => {
       ev("zoom", { meeting: null }), // unsupported link → not a meeting
       ev("allday", { isAllDay: true }),
     ];
-    api.responses = [{ events, nextCursor: "c1" }, { events, nextCursor: "c2" }];
+    api.responses = [
+      { events, nextCursor: "c1" },
+      { events, nextCursor: "c2" },
+    ];
     await ctx.c.calendar.sync(connId);
     await ctx.c.calendar.sync(connId);
     const rows = await userMeetings(u.userId);
@@ -100,7 +123,9 @@ describe("calendar sync (FR-02)", () => {
     const list = await u.agent.get("/api/v1/meetings").expect(200);
     expect(list.body.total).toBe(2);
     expect(list.body.items[0].canRegister).toBe(true);
-    const [conn] = await ctx.c.db.asSystem((tx) => tx.select().from(calendarConnections).where(eq(calendarConnections.id, connId)));
+    const [conn] = await ctx.c.db.asSystem((tx) =>
+      tx.select().from(calendarConnections).where(eq(calendarConnections.id, connId)),
+    );
     expect(conn?.lastSyncedAt).not.toBeNull();
     expect(conn?.syncState?.cursor).toBe("c2");
   });
@@ -110,15 +135,26 @@ describe("calendar sync (FR-02)", () => {
     api.responses = [{ events: [ev("e1")], nextCursor: "c1" }];
     await ctx.c.calendar.sync(connId);
     const [m] = await userMeetings(u.userId);
-    await u.agent.post("/api/v1/meetings/register").set("x-csrf-token", u.csrf).send({ meetingId: m!.id }).expect(200);
+    await u.agent
+      .post("/api/v1/meetings/register")
+      .set("x-csrf-token", u.csrf)
+      .send({ meetingId: m!.id })
+      .expect(200);
 
-    api.responses = [{ events: [ev("e1", { version: "v2", start: hours(48), end: hours(49), title: "Moved" })], nextCursor: "c2" }];
+    api.responses = [
+      {
+        events: [ev("e1", { version: "v2", start: hours(48), end: hours(49), title: "Moved" })],
+        nextCursor: "c2",
+      },
+    ];
     await ctx.c.calendar.sync(connId);
     const [moved] = await userMeetings(u.userId);
     expect(moved?.title).toBe("Moved");
     expect(moved?.status).toBe("queued");
     expect(moved!.scheduledStartAt.getTime()).toBeGreaterThan(Date.now() + 47 * 3600_000);
-    const sched = await ctx.c.db.asSystem((tx) => tx.select().from(jobs).where(eq(jobs.type, "bot_schedule")));
+    const sched = await ctx.c.db.asSystem((tx) =>
+      tx.select().from(jobs).where(eq(jobs.type, "bot_schedule")),
+    );
     const pending = sched.filter((j) => j.status === "pending");
     const cancelled = sched.filter((j) => j.status === "cancelled");
     expect(pending).toHaveLength(1);
@@ -132,14 +168,23 @@ describe("calendar sync (FR-02)", () => {
     await ctx.c.calendar.sync(connId);
     const rows = await userMeetings(u.userId);
     const e2 = rows.find((r) => r.providerEventId === "e2")!;
-    await u.agent.post("/api/v1/meetings/register").set("x-csrf-token", u.csrf).send({ meetingId: e2.id }).expect(200);
+    await u.agent
+      .post("/api/v1/meetings/register")
+      .set("x-csrf-token", u.csrf)
+      .send({ meetingId: e2.id })
+      .expect(200);
 
-    api.responses = [{ events: [ev("e1", { cancelled: true }), ev("e2", { cancelled: true })], nextCursor: "c2" }];
+    api.responses = [
+      { events: [ev("e1", { cancelled: true }), ev("e2", { cancelled: true })], nextCursor: "c2" },
+    ];
     await ctx.c.calendar.sync(connId);
     const after = await userMeetings(u.userId);
     expect(after.every((m) => m.status === "cancelled")).toBe(true);
     const sched = await ctx.c.db.asSystem((tx) =>
-      tx.select().from(jobs).where(and(eq(jobs.type, "bot_schedule"), eq(jobs.status, "pending"))),
+      tx
+        .select()
+        .from(jobs)
+        .where(and(eq(jobs.type, "bot_schedule"), eq(jobs.status, "pending"))),
     );
     expect(sched).toHaveLength(0);
   });
@@ -170,12 +215,21 @@ describe("calendar sync (FR-02)", () => {
     const { u, connId } = await setup();
     // Expire the access token so a refresh is attempted (fake refresh → invalid_grant).
     await ctx.c.db.asSystem((tx) =>
-      tx.update(calendarConnections).set({ accessTokenExpiresAt: hours(-1) }).where(eq(calendarConnections.id, connId)),
+      tx
+        .update(calendarConnections)
+        .set({ accessTokenExpiresAt: hours(-1) })
+        .where(eq(calendarConnections.id, connId)),
     );
     await ctx.c.calendar.sync(connId);
     const list = await u.agent.get("/api/v1/calendar-connections").expect(200);
-    expect(list.body.items[0]).toMatchObject({ status: "reconnect_required", lastErrorCode: "calendar_reconnect_required" });
-    const r = await u.agent.post(`/api/v1/calendar-connections/${connId}/sync`).set("x-csrf-token", u.csrf).expect(409);
+    expect(list.body.items[0]).toMatchObject({
+      status: "reconnect_required",
+      lastErrorCode: "calendar_reconnect_required",
+    });
+    const r = await u.agent
+      .post(`/api/v1/calendar-connections/${connId}/sync`)
+      .set("x-csrf-token", u.csrf)
+      .expect(409);
     expect(r.body.error.code).toBe("calendar_reconnect_required");
   });
 
@@ -186,10 +240,18 @@ describe("calendar sync (FR-02)", () => {
     expect((await userMeetings(off.u.userId))[0]?.status).toBe("scheduled");
 
     const on = await setup(true);
-    api.responses = [{ events: [ev("future"), ev("past", { start: hours(-30), end: hours(-29) })], nextCursor: "c1" }];
+    api.responses = [
+      {
+        events: [ev("future"), ev("past", { start: hours(-30), end: hours(-29) })],
+        nextCursor: "c1",
+      },
+    ];
     await ctx.c.calendar.sync(on.connId);
     const rows = await userMeetings(on.u.userId);
-    expect(rows.find((r) => r.providerEventId === "future")).toMatchObject({ status: "queued", registrationSource: "auto" });
+    expect(rows.find((r) => r.providerEventId === "future")).toMatchObject({
+      status: "queued",
+      registrationSource: "auto",
+    });
     expect(rows.find((r) => r.providerEventId === "past")?.status).toBe("scheduled");
   });
 
@@ -198,10 +260,23 @@ describe("calendar sync (FR-02)", () => {
     api.responses = [{ events: [ev("e1"), ev("e2")], nextCursor: "c1" }];
     await ctx.c.calendar.sync(connId);
     const rows = await userMeetings(u.userId);
-    await u.agent.post("/api/v1/meetings/register").set("x-csrf-token", u.csrf).send({ meetingId: rows[0]!.id }).expect(200);
-    await u.agent.delete(`/api/v1/calendar-connections/${connId}`).set("x-csrf-token", u.csrf).expect(204);
-    const [conn] = await ctx.c.db.asSystem((tx) => tx.select().from(calendarConnections).where(eq(calendarConnections.id, connId)));
-    expect(conn).toMatchObject({ status: "disconnected", encryptedRefreshToken: null, encryptedAccessToken: null });
+    await u.agent
+      .post("/api/v1/meetings/register")
+      .set("x-csrf-token", u.csrf)
+      .send({ meetingId: rows[0]!.id })
+      .expect(200);
+    await u.agent
+      .delete(`/api/v1/calendar-connections/${connId}`)
+      .set("x-csrf-token", u.csrf)
+      .expect(204);
+    const [conn] = await ctx.c.db.asSystem((tx) =>
+      tx.select().from(calendarConnections).where(eq(calendarConnections.id, connId)),
+    );
+    expect(conn).toMatchObject({
+      status: "disconnected",
+      encryptedRefreshToken: null,
+      encryptedAccessToken: null,
+    });
     const list = await u.agent.get("/api/v1/meetings").expect(200);
     expect(list.body.total).toBe(1); // the registered one is kept
     expect((await u.agent.get("/api/v1/calendar-connections").expect(200)).body.items).toEqual([]);
@@ -209,9 +284,14 @@ describe("calendar sync (FR-02)", () => {
 
   it("calendar connect requires configured providers", async () => {
     const { u } = await setup();
-    const r = await u.agent.post("/api/v1/calendar-connections/microsoft_calendar/connect").set("x-csrf-token", u.csrf).expect(503);
+    const r = await u.agent
+      .post("/api/v1/calendar-connections/microsoft_calendar/connect")
+      .set("x-csrf-token", u.csrf)
+      .expect(503);
     expect(r.body.error.code).toBe("not_configured");
-    const [user] = await ctx.c.db.asSystem((tx) => tx.select().from(users).where(eq(users.id, u.userId)));
+    const [user] = await ctx.c.db.asSystem((tx) =>
+      tx.select().from(users).where(eq(users.id, u.userId)),
+    );
     expect(user).toBeTruthy();
   });
 });

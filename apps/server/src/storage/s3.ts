@@ -39,7 +39,11 @@ export class S3StorageAdapter implements StorageAdapter {
     });
   }
 
-  async putFile(key: string, filePath: string, contentType: string): Promise<{ sizeBytes: number }> {
+  async putFile(
+    key: string,
+    filePath: string,
+    contentType: string,
+  ): Promise<{ sizeBytes: number }> {
     assertSafeKey(key);
     // Multipart upload with automatic part retries (resumable at part granularity).
     const upload = new Upload({
@@ -50,7 +54,9 @@ export class S3StorageAdapter implements StorageAdapter {
         Body: createReadStream(filePath),
         ContentType: contentType,
         ServerSideEncryption: this.opts.sse,
-        ...(this.opts.sse === "aws:kms" && this.opts.kmsKeyId ? { SSEKMSKeyId: this.opts.kmsKeyId } : {}),
+        ...(this.opts.sse === "aws:kms" && this.opts.kmsKeyId
+          ? { SSEKMSKeyId: this.opts.kmsKeyId }
+          : {}),
       },
       queueSize: 4,
       partSize: 8 * 1024 * 1024,
@@ -62,7 +68,9 @@ export class S3StorageAdapter implements StorageAdapter {
   async stat(key: string): Promise<{ sizeBytes: number } | null> {
     assertSafeKey(key);
     try {
-      const r = await this.client.send(new HeadObjectCommand({ Bucket: this.opts.bucket, Key: key }));
+      const r = await this.client.send(
+        new HeadObjectCommand({ Bucket: this.opts.bucket, Key: key }),
+      );
       return { sizeBytes: Number(r.ContentLength ?? 0) };
     } catch {
       return null;

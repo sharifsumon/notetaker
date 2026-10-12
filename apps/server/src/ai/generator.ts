@@ -39,8 +39,13 @@ function fmtTime(ms: number | null): string {
 }
 
 /** Formats segments as transcript lines and applies the maximum transcript size policy. */
-export function prepareTranscript(segments: StoredSegment[], maxChars: number): { text: string; truncated: boolean } {
-  const lines = segments.map((s) => `${fmtTime(s.startMs)}${s.speaker ? `${s.speaker}: ` : ""}${s.text}`);
+export function prepareTranscript(
+  segments: StoredSegment[],
+  maxChars: number,
+): { text: string; truncated: boolean } {
+  const lines = segments.map(
+    (s) => `${fmtTime(s.startMs)}${s.speaker ? `${s.speaker}: ` : ""}${s.text}`,
+  );
   let text = lines.join("\n");
   let truncated = false;
   if (text.length > maxChars) {
@@ -98,7 +103,10 @@ export class ArtifactGenerator {
     private readonly cfg: GeneratorConfig,
   ) {}
 
-  private addUsage(total: { inputTokens: number; outputTokens: number; calls: number }, u: LlmUsage) {
+  private addUsage(
+    total: { inputTokens: number; outputTokens: number; calls: number },
+    u: LlmUsage,
+  ) {
     total.inputTokens += u.inputTokens;
     total.outputTokens += u.outputTokens;
     total.calls += 1;
@@ -133,7 +141,10 @@ export class ArtifactGenerator {
     return notes.map((n, i) => `Notes from part ${i + 1}:\n${JSON.stringify(n)}`).join("\n\n");
   }
 
-  async summary(segments: StoredSegment[], metadata: Record<string, string>): Promise<GenerationResult<SummaryContent>> {
+  async summary(
+    segments: StoredSegment[],
+    metadata: Record<string, string>,
+  ): Promise<GenerationResult<SummaryContent>> {
     const { text, truncated } = prepareTranscript(segments, this.cfg.maxTranscriptChars);
     const usage = { inputTokens: 0, outputTokens: 0, calls: 0 };
     const combined = await this.mapChunks(text, metadata, usage);
@@ -154,7 +165,10 @@ export class ArtifactGenerator {
     });
     this.addUsage(usage, r.usage);
     const uncertainties = [...r.data.uncertainties];
-    if (truncated) uncertainties.push("The transcript exceeded the size limit; only the first part was summarized.");
+    if (truncated)
+      uncertainties.push(
+        "The transcript exceeded the size limit; only the first part was summarized.",
+      );
     return {
       content: { ...r.data, uncertainties, insufficientSource: false, note: null },
       usage,
@@ -193,7 +207,9 @@ export class ArtifactGenerator {
         ...grounded,
         meetingDetails: details,
         insufficientSource: false,
-        note: truncated ? "The transcript exceeded the size limit; only the first part was used." : null,
+        note: truncated
+          ? "The transcript exceeded the size limit; only the first part was used."
+          : null,
       },
       usage,
       promptVersion: MINUTES_PROMPT_VERSION,

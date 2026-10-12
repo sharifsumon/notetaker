@@ -1,7 +1,12 @@
 import { detectMeetingUrl, findMeetingUrlInText } from "@notetaker/shared";
 import { ProviderError } from "../lib/errors";
 import { ReauthRequiredError } from "../auth/oauth";
-import { CursorExpiredError, type CalendarApi, type ChangesResult, type NormalizedEvent } from "./types";
+import {
+  CursorExpiredError,
+  type CalendarApi,
+  type ChangesResult,
+  type NormalizedEvent,
+} from "./types";
 
 interface GraphEvent {
   id: string;
@@ -61,7 +66,8 @@ export class MicrosoftCalendarApi implements CalendarApi {
     const maxPages = opts.maxPages ?? 50;
 
     for (let page = 0; page < maxPages && url; page++) {
-      if (new URL(url).host !== allowedHost) throw new ProviderError("calendar_sync_failed", "Unexpected Graph link host", false);
+      if (new URL(url).host !== allowedHost)
+        throw new ProviderError("calendar_sync_failed", "Unexpected Graph link host", false);
       let res: Response;
       try {
         res = await this.fetchImpl(url, {
@@ -78,12 +84,23 @@ export class MicrosoftCalendarApi implements CalendarApi {
       if (res.status === 410) throw new CursorExpiredError();
       if (res.status === 401 || res.status === 403) throw new ReauthRequiredError();
       if (res.status === 429 || res.status >= 500) {
-        throw new ProviderError("calendar_rate_limited", `Microsoft Graph HTTP ${res.status}`, true, res.status);
+        throw new ProviderError(
+          "calendar_rate_limited",
+          `Microsoft Graph HTTP ${res.status}`,
+          true,
+          res.status,
+        );
       }
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: { code?: string } };
-        if (body.error?.code === "SyncStateNotFound" || body.error?.code === "syncStateNotFound") throw new CursorExpiredError();
-        throw new ProviderError("calendar_sync_failed", `Microsoft Graph HTTP ${res.status}`, false, res.status);
+        if (body.error?.code === "SyncStateNotFound" || body.error?.code === "syncStateNotFound")
+          throw new CursorExpiredError();
+        throw new ProviderError(
+          "calendar_sync_failed",
+          `Microsoft Graph HTTP ${res.status}`,
+          false,
+          res.status,
+        );
       }
       const body = (await res.json()) as {
         value?: GraphEvent[];
@@ -109,7 +126,9 @@ export function normalizeGraphEvent(e: GraphEvent): NormalizedEvent {
     ...(e.organizer?.emailAddress
       ? [{ type: "organizer" as const, emailAddress: e.organizer.emailAddress }]
       : []),
-    ...(e.attendees ?? []).filter((a) => a.type !== "resource").map((a) => ({ type: "attendee" as const, emailAddress: a.emailAddress })),
+    ...(e.attendees ?? [])
+      .filter((a) => a.type !== "resource")
+      .map((a) => ({ type: "attendee" as const, emailAddress: a.emailAddress })),
   ];
   const seen = new Set<string>();
   return {

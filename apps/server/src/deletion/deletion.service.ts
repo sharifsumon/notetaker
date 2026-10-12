@@ -2,7 +2,14 @@ import { and, eq, inArray, isNotNull, isNull, lt } from "drizzle-orm";
 import type { AuditService } from "../audit/audit.service";
 import type { MeetingBotProvider } from "../bot/types";
 import type { Db } from "../db/client";
-import { jobs, meetingArtifacts, meetingParticipants, meetings, recordings, transcripts } from "../db/schema";
+import {
+  jobs,
+  meetingArtifacts,
+  meetingParticipants,
+  meetings,
+  recordings,
+  transcripts,
+} from "../db/schema";
 import type { Logger } from "../lib/logger";
 import type { JobService } from "../jobs/job.service";
 import type { MeetingService } from "../meetings/meeting.service";
@@ -36,7 +43,10 @@ export class DeletionService {
       }
       const [rec] = await tx.select().from(recordings).where(eq(recordings.meetingId, m.id));
       const artifactIds = (
-        await tx.select({ id: meetingArtifacts.id }).from(meetingArtifacts).where(eq(meetingArtifacts.meetingId, m.id))
+        await tx
+          .select({ id: meetingArtifacts.id })
+          .from(meetingArtifacts)
+          .where(eq(meetingArtifacts.meetingId, m.id))
       ).map((a) => a.id);
       // Stop all pending work for this meeting only.
       const entityIds = [m.id, ...(rec ? [rec.id] : []), ...artifactIds];
@@ -47,7 +57,13 @@ export class DeletionService {
           and(
             inArray(jobs.status, ["pending", "queued"]),
             inArray(jobs.entityId, entityIds),
-            inArray(jobs.type, ["bot_schedule", "recording_ingest", "transcribe", "generate_summary", "generate_minutes"]),
+            inArray(jobs.type, [
+              "bot_schedule",
+              "recording_ingest",
+              "transcribe",
+              "generate_summary",
+              "generate_minutes",
+            ]),
           ),
         );
       return { m, storageKey: rec?.storageKey ?? null };
@@ -55,9 +71,16 @@ export class DeletionService {
     if (!ctx) return;
     const { m } = ctx;
 
-    if (m.providerSessionId && this.d.provider && ["queued", "joining", "in_progress"].includes(m.status)) {
+    if (
+      m.providerSessionId &&
+      this.d.provider &&
+      ["queued", "joining", "in_progress"].includes(m.status)
+    ) {
       await this.d.provider.cancelSession(m.providerSessionId).catch((err: Error) => {
-        this.d.logger.warn({ meetingId, err: err.message }, "provider session cancel failed during deletion");
+        this.d.logger.warn(
+          { meetingId, err: err.message },
+          "provider session cancel failed during deletion",
+        );
       });
     }
     // Storage first: if this fails the job retries and DB rows still point at the object.
@@ -65,10 +88,30 @@ export class DeletionService {
 
     await this.d.db.asSystem(async (tx) => {
       const counts = {
-        artifacts: (await tx.delete(meetingArtifacts).where(eq(meetingArtifacts.meetingId, m.id)).returning({ id: meetingArtifacts.id })).length,
-        transcripts: (await tx.delete(transcripts).where(eq(transcripts.meetingId, m.id)).returning({ id: transcripts.id })).length,
-        recordings: (await tx.delete(recordings).where(eq(recordings.meetingId, m.id)).returning({ id: recordings.id })).length,
-        participants: (await tx.delete(meetingParticipants).where(eq(meetingParticipants.meetingId, m.id)).returning({ id: meetingParticipants.id })).length,
+        artifacts: (
+          await tx
+            .delete(meetingArtifacts)
+            .where(eq(meetingArtifacts.meetingId, m.id))
+            .returning({ id: meetingArtifacts.id })
+        ).length,
+        transcripts: (
+          await tx
+            .delete(transcripts)
+            .where(eq(transcripts.meetingId, m.id))
+            .returning({ id: transcripts.id })
+        ).length,
+        recordings: (
+          await tx
+            .delete(recordings)
+            .where(eq(recordings.meetingId, m.id))
+            .returning({ id: recordings.id })
+        ).length,
+        participants: (
+          await tx
+            .delete(meetingParticipants)
+            .where(eq(meetingParticipants.meetingId, m.id))
+            .returning({ id: meetingParticipants.id })
+        ).length,
       };
       await tx
         .update(meetings)
@@ -100,7 +143,13 @@ export class DeletionService {
         .select({ id: meetings.id, userId: meetings.userId })
         .from(meetings)
         .innerJoin(recordings, eq(recordings.meetingId, meetings.id))
-        .where(and(isNull(meetings.deletedAt), isNotNull(recordings.storedAt), lt(recordings.storedAt, cutoff)))
+        .where(
+          and(
+            isNull(meetings.deletedAt),
+            isNotNull(recordings.storedAt),
+            lt(recordings.storedAt, cutoff),
+          ),
+        )
         .limit(500);
       for (const e of expired) {
         await this.d.jobs.enqueue(tx, {

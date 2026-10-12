@@ -13,7 +13,8 @@ export interface AuditEntry {
   metadata?: Record<string, unknown>;
 }
 
-const FORBIDDEN_KEYS = /(token|secret|password|url|cookie)$|^(transcript|transcripttext|content|text|body)$/i;
+const FORBIDDEN_KEYS =
+  /(token|secret|password|url|cookie)$|^(transcript|transcripttext|content|text|body)$/i;
 
 function scrub(meta: Record<string, unknown> | undefined): Record<string, unknown> | null {
   if (!meta) return null;
@@ -40,7 +41,14 @@ export class AuditService {
       metadata: scrub(entry.metadata),
     });
     this.logger.info(
-      { audit: { action: entry.action, actorType: entry.actorType, targetType: entry.targetType, targetId: entry.targetId } },
+      {
+        audit: {
+          action: entry.action,
+          actorType: entry.actorType,
+          targetType: entry.targetType,
+          targetId: entry.targetId,
+        },
+      },
       "audit",
     );
   }

@@ -12,16 +12,24 @@ async function queuedSession() {
   const u = await login(ctx.app, "wh@example.com");
   const reg = await registerAdhoc(u, "Webhook test", 0);
   await ctx.c.runner.drain();
-  const [m] = await ctx.c.db.asSystem((tx) => tx.select().from(meetings).where(eq(meetings.id, reg.body.id)));
+  const [m] = await ctx.c.db.asSystem((tx) =>
+    tx.select().from(meetings).where(eq(meetings.id, reg.body.id)),
+  );
   return { u, id: reg.body.id as string, sid: m!.providerSessionId! };
 }
 
 describe("webhook verification (FR-04)", () => {
   it("rejects a bad signature and leaves state unchanged", async () => {
     const { sid, id } = await queuedSession();
-    const r = await sendWebhook(ctx, { type: "bot.in_call_recording", session_id: sid }, { secretOverride: "wrong-secret" }).expect(401);
+    const r = await sendWebhook(
+      ctx,
+      { type: "bot.in_call_recording", session_id: sid },
+      { secretOverride: "wrong-secret" },
+    ).expect(401);
     expect(r.body.error.code).toBe("webhook_verification_failed");
-    const [m] = await ctx.c.db.asSystem((tx) => tx.select().from(meetings).where(eq(meetings.id, id)));
+    const [m] = await ctx.c.db.asSystem((tx) =>
+      tx.select().from(meetings).where(eq(meetings.id, id)),
+    );
     expect(m?.status).toBe("queued");
     const inbox = await ctx.c.db.asSystem((tx) => tx.select().from(webhookEvents));
     expect(inbox).toHaveLength(0);
@@ -30,7 +38,9 @@ describe("webhook verification (FR-04)", () => {
   it("rejects stale (replayed) deliveries outside the tolerance window", async () => {
     const { sid } = await queuedSession();
     const old = Math.floor(Date.now() / 1000) - 3600;
-    await sendWebhook(ctx, { type: "bot.joining", session_id: sid }, { timestamp: old }).expect(401);
+    await sendWebhook(ctx, { type: "bot.joining", session_id: sid }, { timestamp: old }).expect(
+      401,
+    );
   });
 
   it("rejects missing signature headers and malformed bodies", async () => {
@@ -48,7 +58,9 @@ describe("webhook verification (FR-04)", () => {
   });
 
   it("records unknown sessions without changing anything", async () => {
-    const r = await sendWebhook(ctx, { type: "bot.joining", session_id: "mock_unknown.x" }).expect(200);
+    const r = await sendWebhook(ctx, { type: "bot.joining", session_id: "mock_unknown.x" }).expect(
+      200,
+    );
     expect(r.body.outcomes).toEqual(["unknown_session"]);
   });
 
@@ -60,10 +72,22 @@ describe("webhook verification (FR-04)", () => {
 
   it("replaying an identical signed delivery is a no-op", async () => {
     const { sid, id } = await queuedSession();
-    await sendWebhook(ctx, { type: "bot.failed", session_id: sid, error_code: "bot_denied_admission" }, { eventId: "evt_x" }).expect(200);
-    const again = await sendWebhook(ctx, { type: "bot.failed", session_id: sid, error_code: "bot_denied_admission" }, { eventId: "evt_x" }).expect(200);
+    await sendWebhook(
+      ctx,
+      { type: "bot.failed", session_id: sid, error_code: "bot_denied_admission" },
+      { eventId: "evt_x" },
+    ).expect(200);
+    const again = await sendWebhook(
+      ctx,
+      { type: "bot.failed", session_id: sid, error_code: "bot_denied_admission" },
+      { eventId: "evt_x" },
+    ).expect(200);
     expect(again.body.outcomes).toEqual(["duplicate"]);
-    const history = await ctx.c.meetings.detail((await ctx.c.db.asSystem((tx) => tx.select().from(meetings).where(eq(meetings.id, id))))[0]!.userId, id);
+    const history = await ctx.c.meetings.detail(
+      (await ctx.c.db.asSystem((tx) => tx.select().from(meetings).where(eq(meetings.id, id))))[0]!
+        .userId,
+      id,
+    );
     expect(history.statusHistory.filter((h) => h.to === "failed")).toHaveLength(1);
   });
 });
@@ -73,13 +97,21 @@ describe("reconciliation when webhooks are missed", () => {
     const { sid, id } = await queuedSession();
     // Simulate time passing: mark the meeting as stale so reconcile picks it up.
     await ctx.c.db.asSystem((tx) =>
-      tx.update(meetings).set({ updatedAt: new Date(Date.now() - 3600_000), scheduledStartAt: new Date(Date.now() - 60_000) }).where(eq(meetings.id, id)),
+      tx
+        .update(meetings)
+        .set({
+          updatedAt: new Date(Date.now() - 3600_000),
+          scheduledStartAt: new Date(Date.now() - 60_000),
+        })
+        .where(eq(meetings.id, id)),
     );
     // Mock provider with step 0 reports the session as done immediately.
     (ctx.c.bot as unknown as { opts: { stepMs: number } }).opts.stepMs = 0;
     const applied = await ctx.c.botService.reconcile();
     expect(applied).toBeGreaterThan(0);
-    const [m] = await ctx.c.db.asSystem((tx) => tx.select().from(meetings).where(eq(meetings.id, id)));
+    const [m] = await ctx.c.db.asSystem((tx) =>
+      tx.select().from(meetings).where(eq(meetings.id, id)),
+    );
     expect(m?.status).toBe("recording_processing");
     expect(sid).toBeTruthy();
   });
